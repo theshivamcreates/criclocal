@@ -274,7 +274,7 @@ export default function SignupPage() {
                         setFormData({...formData, phone: val});
                       }}
                       className="flex-1 bg-transparent text-on-surface px-4 py-3 outline-none text-sm"
-                      placeholder="98765 43210"
+                      placeholder="10 digit number"
                       maxLength={10}
                     />
                   </div>

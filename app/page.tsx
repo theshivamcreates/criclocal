@@ -174,21 +174,21 @@ export default function HomePage() {
       <div className="bg-inverse-surface border-t border-b border-outline-variant text-surface-bright overflow-hidden flex whitespace-nowrap py-3">
         <div className="animate-marquee inline-block font-display font-bold uppercase tracking-widest text-sm">
           <span className="text-primary mr-2">● LIVE:</span> RED DRAGONS FC 2 - 1 METRO UTD 
-          <span className="mx-8 text-inverse-on-surface opacity-30">///</span> 
+          <span className="mx-8 text-inverse-on-surface opacity-30">{"///"}</span> 
           <span>No friction, just competition</span>
-          <span className="mx-8 text-inverse-on-surface opacity-30">///</span> 
+          <span className="mx-8 text-inverse-on-surface opacity-30">{"///"}</span> 
           <span>Control the pace</span>
-          <span className="mx-8 text-inverse-on-surface opacity-30">///</span> 
+          <span className="mx-8 text-inverse-on-surface opacity-30">{"///"}</span> 
           <span>Dominate the pitch</span>
-          <span className="mx-8 text-inverse-on-surface opacity-30">///</span> 
+          <span className="mx-8 text-inverse-on-surface opacity-30">{"///"}</span> 
           <span>System Online</span>
-          <span className="mx-8 text-inverse-on-surface opacity-30">///</span> 
+          <span className="mx-8 text-inverse-on-surface opacity-30">{"///"}</span> 
           <span>High-performance athletes</span>
-          <span className="mx-8 text-inverse-on-surface opacity-30">///</span> 
+          <span className="mx-8 text-inverse-on-surface opacity-30">{"///"}</span> 
           <span>Elite clubs</span>
-          <span className="mx-8 text-inverse-on-surface opacity-30">///</span> 
+          <span className="mx-8 text-inverse-on-surface opacity-30">{"///"}</span> 
           <span>Relentless organizers</span>
-          <span className="mx-8 text-inverse-on-surface opacity-30">///</span>
+          <span className="mx-8 text-inverse-on-surface opacity-30">{"///"}</span>
         </div>
       </div>
     </AppShell>

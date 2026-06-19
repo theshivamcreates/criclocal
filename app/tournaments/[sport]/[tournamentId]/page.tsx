@@ -302,7 +302,7 @@ export default function PublicTournamentPage({
               {!selectedTeam.roster || selectedTeam.roster.length === 0 ? (
                 <div className="text-center py-12 text-on-surface-variant">
                   <Users2 size={48} className="mx-auto mb-4 opacity-30" />
-                  <p className="font-medium">No players have been assigned to this team's roster yet.</p>
+                  <p className="font-medium">No players have been assigned to this team&apos;s roster yet.</p>
                 </div>
               ) : (
                 <ul className="space-y-3">

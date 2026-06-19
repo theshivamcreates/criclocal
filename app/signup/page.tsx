@@ -153,7 +153,7 @@ export default function SignupPage() {
             Enter<br/>The<br/>Arena.
           </h1>
           <p className="text-lg text-inverse-on-surface opacity-80 font-medium leading-relaxed">
-            "The infrastructure separating amateurs from the elite. Join the definitive network for high-performance sports."
+            &quot;The infrastructure separating amateurs from the elite. Join the definitive network for high-performance sports.&quot;
           </p>
         </div>
       </div>

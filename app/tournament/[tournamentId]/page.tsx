@@ -140,7 +140,7 @@ export default function TournamentPage({
         toss: teamList[0].id,
       }));
     }
-  }, [teamList]);
+  }, [teamList, matchForm.team1, matchForm.team2]);
 
   // Sync settings when tournament loads
   useEffect(() => {

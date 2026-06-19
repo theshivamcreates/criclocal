@@ -137,7 +137,7 @@ export default function FootballTournamentPage({
         team2: teamList[1].id,
       }));
     }
-  }, [teamList]);
+  }, [teamList, matchForm.team1, matchForm.team2]);
 
   useEffect(() => {
     if (tournament && !hasInitializedSettings) {

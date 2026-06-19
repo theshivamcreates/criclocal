@@ -61,11 +61,11 @@ export default function ScoresPage() {
         <div className="p-6 flex-1 flex flex-col justify-center">
            <div className="flex justify-between items-center mb-4">
              <div className="font-black text-on-surface text-lg max-w-[40%] truncate">{match.meta.team1}</div>
-             <div className="text-xl font-black bg-surface-variant px-3 py-1 rounded-md text-on-surface">{match.score.team1.runs}/{match.score.team1.wickets}</div>
+             <div className="text-xl font-black bg-surface-variant px-3 py-1 rounded-md text-on-surface">{match.innings?.["1"]?.runs || 0}/{match.innings?.["1"]?.wickets || 0}</div>
            </div>
            <div className="flex justify-between items-center">
              <div className="font-black text-on-surface text-lg max-w-[40%] truncate">{match.meta.team2}</div>
-             <div className="text-xl font-black bg-surface-variant px-3 py-1 rounded-md text-on-surface">{match.score.team2.runs}/{match.score.team2.wickets}</div>
+             <div className="text-xl font-black bg-surface-variant px-3 py-1 rounded-md text-on-surface">{match.innings?.["2"]?.runs || 0}/{match.innings?.["2"]?.wickets || 0}</div>
            </div>
         </div>
         <div className="bg-inverse-surface text-inverse-on-surface p-3 text-center text-sm font-bold">

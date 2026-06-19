@@ -433,21 +433,19 @@ export default function FootballScorePage({
 
         {/* MATCH ACTIONS */}
         <div className="flex justify-end gap-3 mt-8">
-          {match.meta.status !== "completed" && (
-            <button
-              onClick={() => {
-                if (confirm("Are you sure you want to complete this match?")) {
-                  completeFootballMatch(
-                    matchId,
-                    `${match.meta.team1} ${match.score.team1} - ${match.score.team2} ${match.meta.team2}`,
-                  );
-                }
-              }}
-              className="px-6 py-3 rounded-lg bg-inverse-surface text-white font-black"
-            >
-              End Match
-            </button>
-          )}
+          <button
+            onClick={() => {
+              if (confirm("Are you sure you want to complete this match?")) {
+                completeFootballMatch(
+                  matchId,
+                  `${match.meta.team1} ${match.score.team1} - ${match.score.team2} ${match.meta.team2}`,
+                );
+              }
+            }}
+            className="px-6 py-3 rounded-lg bg-inverse-surface text-white font-black"
+          >
+            End Match
+          </button>
         </div>
         </>
         )}

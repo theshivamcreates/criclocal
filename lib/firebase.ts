@@ -24,6 +24,6 @@ export const isFirebaseConfigured = Boolean(
 export const app: FirebaseApp | null = isFirebaseConfigured
   ? (getApps()[0] ?? initializeApp(firebaseConfig))
   : null;
-export const db: Database | null = app ? getDatabase(app) : null;
+export const db = (app ? getDatabase(app) : null) as unknown as Database;
 export const auth: Auth | null = app ? getAuth(app) : null;
 export const storage: FirebaseStorage | null = app ? getStorage(app) : null;

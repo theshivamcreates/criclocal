@@ -21,7 +21,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { auth, db } from "@/lib/firebase";
+import { auth, db, storage } from "@/lib/firebase";
 import {
   deleteMatch,
   saveMatch,

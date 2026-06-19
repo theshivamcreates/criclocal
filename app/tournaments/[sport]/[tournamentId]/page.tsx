@@ -99,8 +99,8 @@ export default function PublicTournamentPage({
 
   const teamList = tournament.teams
     ? Object.keys(tournament.teams).map((k) => ({
-        id: k,
         ...tournament.teams![k],
+        id: k,
       }))
     : [];
 

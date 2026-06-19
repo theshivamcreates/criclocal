@@ -76,6 +76,13 @@ export interface TournamentTeam {
 
 export interface Tournament {
  name: string;
+ entryFee?: string;
+ maxTeams?: number | string;
+ startDate?: string;
+ location?: string;
+ skillLevel?: string;
+ status?: string;
+ bannerUrl?: string;
  createdBy: string;
  createdAt: number;
  teams: Record<string, TournamentTeam>;

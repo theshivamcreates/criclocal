@@ -7,6 +7,7 @@ import { registerProUser, type ProUserRegistrationData } from "@/lib/firebaseAut
 import imageCompression from "browser-image-compression";
 import { ArrowRight, ArrowLeft, Camera, UploadCloud, Trophy, Users, Shield } from "lucide-react";
 import { FirebaseNotice } from "@/components/FirebaseNotice";
+import { AppShell } from "@/components/AppShell";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -124,11 +125,12 @@ export default function SignupPage() {
   };
 
   return (
-    <main className="min-h-screen bg-inverse-surface flex font-sans text-on-primary">
-      <FirebaseNotice />
-      
-      {/* Left Panel - Branding (Hidden on mobile) */}
-      <div className="hidden lg:flex w-1/2 relative flex-col justify-between p-12 overflow-hidden border-r border-outline-variant">
+    <AppShell>
+      <div className="flex-1 bg-inverse-surface flex font-sans text-on-primary min-h-[calc(100vh-4rem)] w-full">
+        <FirebaseNotice />
+        
+        {/* Left Panel - Branding (Hidden on mobile) */}
+        <div className="hidden lg:flex w-1/2 relative flex-col justify-between p-12 overflow-hidden border-r border-outline-variant">
         <div className="absolute inset-0 z-0">
           <img 
             src="https://images.unsplash.com/photo-1518605368461-1e1e1273919e?q=80&w=2000" 
@@ -176,9 +178,16 @@ export default function SignupPage() {
           </div>
 
           <div className="mb-10 text-on-surface">
-            <h2 className="font-display text-4xl font-black tracking-tight uppercase mb-3">
-              {step === 1 ? "Initialize Profile" : step === 2 ? "Choose Your Arena" : "Final Polish"}
-            </h2>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end mb-3 gap-2">
+              <h2 className="font-display text-4xl font-black tracking-tight uppercase">
+                {step === 1 ? "Initialize Profile" : step === 2 ? "Choose Your Arena" : "Final Polish"}
+              </h2>
+              {step === 1 && (
+                <Link href="/auth" className="text-xs font-bold text-primary hover:underline uppercase tracking-wider mb-2">
+                  Or Sign In
+                </Link>
+              )}
+            </div>
             <p className="text-sm text-on-surface-variant">
               {step === 1 ? "Establish your core identity within the network." : step === 2 ? "Select your primary sport to tailor your experience." : "Add a photo and bio to stand out to scouts and clubs."}
             </p>
@@ -391,6 +400,6 @@ export default function SignupPage() {
           </form>
         </div>
       </div>
-    </main>
+    </AppShell>
   );
 }

@@ -67,7 +67,7 @@ export default function HomePage() {
               ) : (
                 <>
                   <Link 
-                    href="/auth" 
+                    href="/signup" 
                     className="bg-primary text-on-primary font-bold uppercase tracking-widest text-sm px-8 py-4 flex items-center justify-center gap-2 hover:bg-primary-container transition-colors"
                   >
                     Join the Community <ArrowRight size={18} strokeWidth={3}/>

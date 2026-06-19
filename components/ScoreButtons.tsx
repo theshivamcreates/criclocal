@@ -9,10 +9,16 @@ const BALL_EVENTS: Array<{ label: string; value: BallEvent; color: string }> = [
   { label: "6", value: "6", color: "bg-yellow-400 text-slate-950" },
   { label: "W", value: "W", color: "bg-rose-700" },
   { label: "WD", value: "WD", color: "bg-orange-600" },
-  { label: "NB", value: "NB", color: "bg-violet-700" }
+  { label: "NB", value: "NB", color: "bg-violet-700" },
 ];
 
-export function ScoreButtons({ onBall, disabled }: { onBall: (event: BallEvent) => void; disabled?: boolean }) {
+export function ScoreButtons({
+  onBall,
+  disabled,
+}: {
+  onBall: (event: BallEvent) => void;
+  disabled?: boolean;
+}) {
   return (
     <div className="grid grid-cols-3 gap-3">
       {BALL_EVENTS.map((ball) => (

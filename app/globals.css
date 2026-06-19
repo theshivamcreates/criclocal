@@ -3,7 +3,44 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
+  --color-background: #F5F5F5;
+  --color-on-background: #1A1A1A;
+  
+  --color-surface: #FFFFFF;
+  --color-surface-dim: #FAFAFA;
+  --color-surface-variant: #F0F0F0;
+  --color-on-surface: #1A1A1A;
+  --color-on-surface-variant: #707070;
+  
+  --color-inverse-surface: #1A1A1A;
+  --color-inverse-on-surface: #FFFFFF;
+  
+  --color-primary: #E31E24;
+  --color-on-primary: #FFFFFF;
+  
+  --color-outline: #E5E5E5;
+  --color-outline-variant: #D4D4D4;
+}
+
+.dark {
+  --color-background: #1A1A1A;
+  --color-on-background: #F5F5F5;
+  
+  --color-surface: #242424;
+  --color-surface-dim: #1E1E1E;
+  --color-surface-variant: #333333;
+  --color-on-surface: #F5F5F5;
+  --color-on-surface-variant: #A0A0A0;
+  
+  /* CRITICAL: In true dark mode, elements that are dark in light mode should stay dark, not invert to white. */
+  --color-inverse-surface: #121212; 
+  --color-inverse-on-surface: #F5F5F5;
+  
+  --color-primary: #E31E24;
+  --color-on-primary: #FFFFFF;
+  
+  --color-outline: #404040;
+  --color-outline-variant: #333333;
 }
 
 * {
@@ -17,16 +54,31 @@ body {
 
 body {
   margin: 0;
-  background: #f8fafc;
-  color: #101828;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-button,
-input,
-select {
-  font: inherit;
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .overlay-page {
-  background: transparent;
+  background: transparent !important;
+}
+
+/* Base styles for scrollbars for a brutalist feel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: theme('colors.surface-container'); 
+}
+::-webkit-scrollbar-thumb {
+  background: theme('colors.inverse-surface'); 
+}
+::-webkit-scrollbar-thumb:hover {
+  background: theme('colors.primary'); 
 }

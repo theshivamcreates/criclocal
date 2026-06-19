@@ -10,19 +10,19 @@ const firebaseConfig = {
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
 export const isFirebaseConfigured = Boolean(
   firebaseConfig.apiKey &&
-    firebaseConfig.authDomain &&
-    firebaseConfig.databaseURL &&
-    firebaseConfig.projectId &&
-    firebaseConfig.appId
+  firebaseConfig.authDomain &&
+  firebaseConfig.databaseURL &&
+  firebaseConfig.projectId &&
+  firebaseConfig.appId,
 );
 
 export const app: FirebaseApp | null = isFirebaseConfigured
-  ? getApps()[0] ?? initializeApp(firebaseConfig)
+  ? (getApps()[0] ?? initializeApp(firebaseConfig))
   : null;
 export const db: Database | null = app ? getDatabase(app) : null;
 export const auth: Auth | null = app ? getAuth(app) : null;

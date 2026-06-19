@@ -8,10 +8,14 @@ export function BowlerRow({ name, bowler }: { name: string; bowler: Bowler }) {
         <p className="font-bold text-slate-950">{bowler.name || name}</p>
         <p className="text-xs text-slate-500">Current bowler</p>
       </div>
-      <span className="text-right font-black">{getOversDisplay(bowler.balls)}</span>
+      <span className="text-right font-black">
+        {getOversDisplay(bowler.balls)}
+      </span>
       <span className="text-right text-slate-600">{bowler.runs}</span>
       <span className="text-right text-slate-600">{bowler.wickets}</span>
-      <span className="text-right text-slate-600">{bowler.wides + bowler.noBalls}</span>
+      <span className="text-right text-slate-600">
+        {bowler.wides + bowler.noBalls}
+      </span>
     </div>
   );
 }

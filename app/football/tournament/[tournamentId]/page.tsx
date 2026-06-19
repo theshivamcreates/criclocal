@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState, use } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { onValue, ref as dbRef, remove } from "firebase/database";
 import {
@@ -21,25 +21,27 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { auth, db } from "@/lib/firebase";
+import { auth, db, storage, isFirebaseConfigured } from "@/lib/firebase";
 import {
-  deleteMatch,
-  saveMatch,
-  saveTournament,
-  subscribeToTournament,
-  updateMatchMeta,
-} from "@/lib/firebaseMatches";
-import { buildNewMatch } from "@/lib/matchUtils";
-import type { Match, Player, Tournament } from "@/types/match";
+  deleteFootballMatch,
+  saveFootballMatch,
+  saveFootballTournament,
+  subscribeToFootballTournament,
+  updateFootballMatchMeta,
+} from "@/lib/firebaseFootball";
+import type {
+  FootballMatch,
+  FootballPlayer,
+  FootballTournament,
+} from "@/types/football";
 import { v4 as uuidv4 } from "uuid";
 import {
   ref as storageRef,
   uploadBytes,
   getDownloadURL,
 } from "firebase/storage";
-import { use } from "react";
 
-export default function TournamentPage({
+export default function FootballTournamentPage({
   params,
 }: {
   params: Promise<{ tournamentId: string }>;
@@ -48,8 +50,8 @@ export default function TournamentPage({
   const resolvedParams = use(params);
   const tournamentId = resolvedParams.tournamentId;
   const [user, setUser] = useState<User | null>(null);
-  const [tournament, setTournament] = useState<Tournament | null>(null);
-  const [matches, setMatches] = useState<Record<string, Match>>({});
+  const [tournament, setTournament] = useState<FootballTournament | null>(null);
+  const [matches, setMatches] = useState<Record<string, FootballMatch>>({});
   const [activeTab, setActiveTab] = useState<"teams" | "matches" | "settings">(
     "matches",
   );
@@ -58,8 +60,8 @@ export default function TournamentPage({
   const [teamForm, setTeamForm] = useState<{
     name: string;
     color: string;
-    roster: Player[];
-  }>({ name: "", color: "#004ba0", roster: [] });
+    roster: FootballPlayer[];
+  }>({ name: "", color: "#1e40af", roster: [] });
   const [teamLogoFile, setTeamLogoFile] = useState<File | null>(null);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
 
@@ -67,9 +69,6 @@ export default function TournamentPage({
   const [matchForm, setMatchForm] = useState({
     team1: "",
     team2: "",
-    overs: 20,
-    toss: "",
-    elected: "bat",
     scheduledDate: "",
     scheduledTime: "",
   });
@@ -88,8 +87,8 @@ export default function TournamentPage({
     skillLevel: "Open",
     status: "Upcoming",
     bannerUrl: "",
-    maxPlayersPerTeam: 15,
-    defaultOvers: 20,
+    maxPlayersPerTeam: 25,
+    matchDurationMinutes: 90,
   });
   const [hasInitializedSettings, setHasInitializedSettings] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -101,12 +100,12 @@ export default function TournamentPage({
 
   useEffect(() => {
     if (!db) return;
-    const unsubTournament = subscribeToTournament(tournamentId, (t) => {
+    const unsubTournament = subscribeToFootballTournament(tournamentId, (t) => {
       setTournament(t);
       setIsLoading(false);
     });
     const unsubMatches = onValue(
-      dbRef(db, "matches"),
+      dbRef(db, "football/matches"),
       (snapshot) => setMatches(snapshot.val() ?? {}),
       (error) => setMessage(`Error reading matches: ${error.message}`),
     );
@@ -130,24 +129,21 @@ export default function TournamentPage({
     }));
   }, [tournament]);
 
-  // Set default teams in match form when teams are loaded
   useEffect(() => {
     if (teamList.length >= 2 && !matchForm.team1 && !matchForm.team2) {
       setMatchForm((prev) => ({
         ...prev,
         team1: teamList[0].id,
         team2: teamList[1].id,
-        toss: teamList[0].id,
       }));
     }
   }, [teamList]);
 
-  // Sync settings when tournament loads
   useEffect(() => {
     if (tournament && !hasInitializedSettings) {
       const s = tournament.settings || {
-        maxPlayersPerTeam: 15,
-        defaultOvers: 20,
+        maxPlayersPerTeam: 25,
+        matchDurationMinutes: 90,
       };
       setSettingsForm({
         name: tournament.name || "",
@@ -158,10 +154,9 @@ export default function TournamentPage({
         skillLevel: tournament.skillLevel || "Open",
         status: tournament.status || "Upcoming",
         bannerUrl: tournament.bannerUrl || "",
-        maxPlayersPerTeam: s.maxPlayersPerTeam || 15,
-        defaultOvers: s.defaultOvers || 20,
+        maxPlayersPerTeam: s.maxPlayersPerTeam || 25,
+        matchDurationMinutes: s.matchDurationMinutes || 90,
       });
-      setMatchForm((prev) => ({ ...prev, overs: s.defaultOvers }));
       setHasInitializedSettings(true);
     }
   }, [tournament, hasInitializedSettings]);
@@ -172,7 +167,7 @@ export default function TournamentPage({
     setIsUploading(true);
     setMessage("Saving settings...");
     try {
-      await saveTournament(tournamentId, {
+      await saveFootballTournament(tournamentId, {
         ...tournament,
         name: settingsForm.name,
         entryFee: settingsForm.entryFee,
@@ -184,7 +179,7 @@ export default function TournamentPage({
         bannerUrl: settingsForm.bannerUrl,
         settings: {
           maxPlayersPerTeam: Number(settingsForm.maxPlayersPerTeam),
-          defaultOvers: Number(settingsForm.defaultOvers),
+          matchDurationMinutes: Number(settingsForm.matchDurationMinutes),
         },
       });
       setMessage("Settings saved!");
@@ -196,10 +191,10 @@ export default function TournamentPage({
   }
 
   async function handleDeleteTournament() {
-    if (!confirm("Are you sure you want to delete this tournament? All data will be lost.")) return;
+    if (!confirm("Are you sure you want to delete this tournament? This action cannot be undone.")) return;
     try {
-      await remove(dbRef(db, `tournaments/${tournamentId}`));
-      router.push("/dashboard");
+      await remove(dbRef(db, `football/tournaments/${tournamentId}`));
+      router.push("/dashboard/football");
     } catch (err: any) {
       setMessage(`Error deleting tournament: ${err.message}`);
     }
@@ -240,8 +235,8 @@ export default function TournamentPage({
         },
       };
 
-      await saveTournament(tournamentId, updatedTournament);
-      setTeamForm({ name: "", color: "#004ba0", roster: [] });
+      await saveFootballTournament(tournamentId, updatedTournament);
+      setTeamForm({ name: "", color: "#1e40af", roster: [] });
       setTeamLogoFile(null);
       setEditingTeamId(null);
       setMessage(
@@ -262,7 +257,7 @@ export default function TournamentPage({
     try {
       const updatedTeams = { ...tournament.teams };
       delete updatedTeams[teamId];
-      await saveTournament(tournamentId, {
+      await saveFootballTournament(tournamentId, {
         ...tournament,
         teams: updatedTeams,
       });
@@ -276,12 +271,8 @@ export default function TournamentPage({
     setEditingTeamId(teamId);
     setTeamForm({
       name: team.name,
-      color: team.color || "#004ba0",
-      roster: Array.isArray(team.roster)
-        ? team.roster.map((p: any) =>
-            typeof p === "string" ? { name: p, role: "Player" } : p,
-          )
-        : [],
+      color: team.color || "#1e40af",
+      roster: Array.isArray(team.roster) ? team.roster : [],
     });
     setTeamLogoFile(null);
     setActiveTab("teams");
@@ -319,7 +310,7 @@ export default function TournamentPage({
       }
 
       if (editingMatchId) {
-        await updateMatchMeta(matchId, {
+        await updateFootballMatchMeta(matchId, {
           team1: t1.name,
           team2: t2.name,
           team1Logo: t1.logo || "",
@@ -328,29 +319,30 @@ export default function TournamentPage({
           team2Roster: t2.roster || [],
           team1Color: t1.color || "",
           team2Color: t2.color || "",
-          overs: Number(matchForm.overs),
-          toss: matchForm.toss === matchForm.team1 ? "team1" : "team2",
-          elected: matchForm.elected as "bat" | "field",
           ...(scheduledAt ? { scheduledAt } : {}),
         });
       } else {
-        const match = buildNewMatch(
-          t1.name,
-          t2.name,
-          Number(matchForm.overs),
-          matchForm.toss === matchForm.team1 ? "team1" : "team2",
-          matchForm.elected as "bat" | "field",
-          user.uid,
-          t1.logo,
-          t2.logo,
-          t1.roster,
-          t2.roster,
-          t1.color,
-          t2.color,
-          scheduledAt,
-        );
-        match.meta.tournamentId = tournamentId;
-        await saveMatch(matchId, match);
+        const match: FootballMatch = {
+          meta: {
+            team1: t1.name,
+            team2: t2.name,
+            ...(t1.logo ? { team1Logo: t1.logo } : {}),
+            ...(t2.logo ? { team2Logo: t2.logo } : {}),
+            team1Roster: t1.roster || [],
+            team2Roster: t2.roster || [],
+            team1Color: t1.color || "",
+            team2Color: t2.color || "",
+            status: "scheduled",
+            createdBy: user.uid,
+            createdAt: Date.now(),
+            tournamentId,
+            ...(scheduledAt ? { scheduledAt } : {}),
+          },
+          score: { team1: 0, team2: 0 },
+          timer: { isRunning: false, seconds: 0, lastUpdated: Date.now() },
+          result: null,
+        };
+        await saveFootballMatch(matchId, match);
       }
 
       setMessage(editingMatchId ? "Match updated!" : "Match created!");
@@ -370,7 +362,7 @@ export default function TournamentPage({
   async function handleDeleteMatchAction(matchId: string) {
     if (!confirm("Are you sure you want to delete this match?")) return;
     try {
-      await deleteMatch(matchId);
+      await deleteFootballMatch(matchId);
       setMessage("Match deleted.");
     } catch (err: any) {
       setMessage(`Error deleting match: ${err.message}`);
@@ -379,14 +371,14 @@ export default function TournamentPage({
 
   async function handleGoLive(matchId: string) {
     try {
-      await updateMatchMeta(matchId, { status: "live" });
+      await updateFootballMatchMeta(matchId, { status: "live" });
       setMessage("Match is now LIVE!");
     } catch (err: any) {
       setMessage(`Error starting match: ${err.message}`);
     }
   }
 
-  function handleEditMatchClick(matchId: string, match: Match) {
+  function handleEditMatchClick(matchId: string, match: FootballMatch) {
     const t1Id =
       Object.keys(tournament?.teams || {}).find(
         (k) => tournament?.teams[k].name === match.meta.team1,
@@ -400,9 +392,6 @@ export default function TournamentPage({
     setMatchForm({
       team1: t1Id,
       team2: t2Id,
-      overs: match.meta.overs,
-      toss: match.meta.toss === "team1" ? t1Id : t2Id,
-      elected: match.meta.elected,
       scheduledDate: match.meta.scheduledAt
         ? new Date(match.meta.scheduledAt).toISOString().split("T")[0]
         : "",
@@ -436,8 +425,8 @@ export default function TournamentPage({
             This tournament may have been deleted, or the URL is incorrect.
           </p>
           <Link
-            href="/dashboard"
-            className="px-6 py-3 bg-inverse-surface text-white rounded-lg font-black inline-flex items-center gap-2"
+            href="/dashboard/football"
+            className="px-6 py-3 bg-primary text-white rounded-lg font-black inline-flex items-center gap-2"
           >
             Return to Dashboard
           </Link>
@@ -456,7 +445,7 @@ export default function TournamentPage({
           <div>
             <div className="mb-2">
               <Link
-                href="/dashboard"
+                href="/dashboard/football"
                 className="text-sm font-bold text-on-surface-variant hover:text-primary flex items-center gap-1"
               >
                 <ArrowLeft size={16} /> Back to dashboard
@@ -474,19 +463,19 @@ export default function TournamentPage({
       <div className="mx-auto max-w-6xl px-4 py-8">
         <div className="flex gap-4 mb-8">
           <button
-            className={`px-6 py-3 font-black rounded-lg transition-colors ${activeTab === "matches" ? "bg-inverse-surface text-white" : "bg-surface text-on-surface-variant border border-outline hover:bg-surface-dim"}`}
+            className={`px-6 py-3 font-black rounded-lg transition-colors ${activeTab === "matches" ? "bg-primary text-white" : "bg-surface text-on-surface-variant border border-outline hover:bg-surface-dim"}`}
             onClick={() => setActiveTab("matches")}
           >
             Schedule & Matches
           </button>
           <button
-            className={`px-6 py-3 font-black rounded-lg transition-colors ${activeTab === "teams" ? "bg-inverse-surface text-white" : "bg-surface text-on-surface-variant border border-outline hover:bg-surface-dim"}`}
+            className={`px-6 py-3 font-black rounded-lg transition-colors ${activeTab === "teams" ? "bg-primary text-white" : "bg-surface text-on-surface-variant border border-outline hover:bg-surface-dim"}`}
             onClick={() => setActiveTab("teams")}
           >
             Teams Roster
           </button>
           <button
-            className={`px-6 py-3 font-black rounded-lg transition-colors ${activeTab === "settings" ? "bg-inverse-surface text-white" : "bg-surface text-on-surface-variant border border-outline hover:bg-surface-dim"}`}
+            className={`px-6 py-3 font-black rounded-lg transition-colors ${activeTab === "settings" ? "bg-primary text-white" : "bg-surface text-on-surface-variant border border-outline hover:bg-surface-dim"}`}
             onClick={() => setActiveTab("settings")}
           >
             Settings
@@ -500,7 +489,7 @@ export default function TournamentPage({
 
               {message && (
                 <div
-                  className={`mb-4 rounded-md p-3 text-sm font-medium ${message.includes("Error") ? "bg-red-50 text-red-700" : "bg-primary-container text-emerald-700"}`}
+                  className={`mb-4 rounded-md p-3 text-sm font-medium ${message.includes("Error") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}
                 >
                   {message}
                 </div>
@@ -544,11 +533,11 @@ export default function TournamentPage({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-bold">
-                      Roster ({teamForm.roster.length}/
-                      {tournament.settings?.maxPlayersPerTeam || 15})
+                      Squad ({teamForm.roster.length}/
+                      {tournament.settings?.maxPlayersPerTeam || 25})
                     </label>
                     {teamForm.roster.length <
-                      (tournament.settings?.maxPlayersPerTeam || 15) && (
+                      (tournament.settings?.maxPlayersPerTeam || 25) && (
                       <button
                         type="button"
                         onClick={() =>
@@ -560,7 +549,7 @@ export default function TournamentPage({
                             ],
                           })
                         }
-                        className="text-xs font-bold text-pitch hover:underline"
+                        className="text-xs font-bold text-primary hover:underline"
                       >
                         + Add Player
                       </button>
@@ -585,15 +574,16 @@ export default function TournamentPage({
                         onChange={(e) => {
                           const newRoster = [...teamForm.roster];
                           newRoster[idx].role = e.target
-                            .value as Player["role"];
+                            .value as FootballPlayer["role"];
                           setTeamForm({ ...teamForm, roster: newRoster });
                         }}
                       >
                         <option value="Player">Player</option>
-                        <option value="Batsman">Batsman</option>
-                        <option value="Bowler">Bowler</option>
-                        <option value="All-Rounder">All-Rounder</option>
-                        <option value="Wicket-Keeper">Wicket-Keeper</option>
+                        <option value="Forward">Forward</option>
+                        <option value="Midfielder">Midfielder</option>
+                        <option value="Defender">Defender</option>
+                        <option value="Goalkeeper">Goalkeeper</option>
+                        <option value="Manager">Manager</option>
                       </select>
                       <button
                         type="button"
@@ -602,7 +592,7 @@ export default function TournamentPage({
                           newRoster.splice(idx, 1);
                           setTeamForm({ ...teamForm, roster: newRoster });
                         }}
-                        className="text-on-surface-variant hover:text-red-500"
+                        className="text-on-surface-variant hover:text-primary"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -616,7 +606,7 @@ export default function TournamentPage({
                       type="button"
                       onClick={() => {
                         setEditingTeamId(null);
-                        setTeamForm({ name: "", color: "#004ba0", roster: [] });
+                        setTeamForm({ name: "", color: "#1e40af", roster: [] });
                       }}
                       className="w-full rounded-lg bg-slate-200 px-4 py-3 font-black text-on-surface"
                     >
@@ -624,7 +614,7 @@ export default function TournamentPage({
                     </button>
                   )}
                   <button
-                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-pitch px-4 py-3 font-black text-white disabled:opacity-50"
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary hover:bg-primary-container px-4 py-3 font-black text-white disabled:opacity-50"
                     disabled={isUploading || !teamForm.name}
                   >
                     {editingTeamId ? (
@@ -670,13 +660,13 @@ export default function TournamentPage({
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleEditTeamClick(team.id, team)}
-                        className="text-on-surface-variant hover:text-pitch"
+                        className="text-on-surface-variant hover:text-primary"
                       >
                         <Pencil size={16} />
                       </button>
                       <button
                         onClick={() => handleDeleteTeam(team.id)}
-                        className="text-on-surface-variant hover:text-red-500"
+                        className="text-on-surface-variant hover:text-primary"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -703,7 +693,7 @@ export default function TournamentPage({
                 <form className="space-y-4" onSubmit={handleCreateMatch}>
                   <div className="space-y-3 p-4 rounded-lg bg-surface-dim border border-outline-variant">
                     <label className="block text-sm font-bold">
-                      Team 1
+                      Home Team (Team 1)
                       <select
                         required
                         className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal"
@@ -724,7 +714,7 @@ export default function TournamentPage({
                       VS
                     </div>
                     <label className="block text-sm font-bold">
-                      Team 2
+                      Away Team (Team 2)
                       <select
                         required
                         className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal"
@@ -743,53 +733,6 @@ export default function TournamentPage({
                     </label>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3">
-                    <label className="block text-sm font-bold">
-                      Overs
-                      <input
-                        className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal"
-                        min={1}
-                        max={50}
-                        type="number"
-                        value={matchForm.overs}
-                        onChange={(e) =>
-                          setMatchForm({
-                            ...matchForm,
-                            overs: Number(e.target.value),
-                          })
-                        }
-                      />
-                    </label>
-                    <label className="block text-sm font-bold">
-                      Toss
-                      <select
-                        className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal"
-                        value={matchForm.toss}
-                        onChange={(e) =>
-                          setMatchForm({ ...matchForm, toss: e.target.value })
-                        }
-                      >
-                        <option value={matchForm.team1}>Team 1</option>
-                        <option value={matchForm.team2}>Team 2</option>
-                      </select>
-                    </label>
-                    <label className="block text-sm font-bold">
-                      Elected
-                      <select
-                        className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal"
-                        value={matchForm.elected}
-                        onChange={(e) =>
-                          setMatchForm({
-                            ...matchForm,
-                            elected: e.target.value,
-                          })
-                        }
-                      >
-                        <option value="bat">Bat</option>
-                        <option value="field">Field</option>
-                      </select>
-                    </label>
-                  </div>
                   <div className="grid grid-cols-2 gap-3 mt-3">
                     <label className="block text-sm font-bold">
                       Scheduled Date
@@ -839,7 +782,7 @@ export default function TournamentPage({
                       </button>
                     )}
                     <button
-                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-pitch px-4 py-3 font-black text-white disabled:opacity-50"
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary hover:bg-primary-container px-4 py-3 font-black text-white disabled:opacity-50"
                       disabled={isUploading}
                     >
                       <Calendar size={18} />{" "}
@@ -903,9 +846,6 @@ export default function TournamentPage({
                             >
                               {match.meta.status}
                             </span>
-                            <span className="text-sm text-on-surface-variant font-medium">
-                              {match.meta.overs} overs
-                            </span>
                             {match.meta.scheduledAt && (
                               <span className="text-sm text-on-surface-variant font-medium ml-2">
                                 •{" "}
@@ -947,16 +887,10 @@ export default function TournamentPage({
                           match.meta.status === "live") && (
                           <>
                             <Link
-                              className="flex items-center gap-1 rounded-md bg-inverse-surface px-3 py-2 text-sm font-black text-white"
-                              href={`/match/${id}/score`}
+                              className="flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-black text-white"
+                              href={`/football/match/${id}/score`}
                             >
-                              <Smartphone size={16} /> Score
-                            </Link>
-                            <Link
-                              className="flex items-center gap-1 rounded-md border border-outline hover:bg-surface-dim px-3 py-2 text-sm font-black"
-                              href={`/match/${id}/live`}
-                            >
-                              <Eye size={16} /> Live
+                              <Smartphone size={16} /> Controller
                             </Link>
                             <button
                               onClick={() => handleEditMatchClick(id, match)}
@@ -974,12 +908,6 @@ export default function TournamentPage({
                         )}
                         {match.meta.status === "completed" && (
                           <>
-                            <Link
-                              className="flex items-center gap-1 rounded-md bg-surface-variant hover:bg-slate-200 px-3 py-2 text-sm font-black"
-                              href={`/match/${id}/live`}
-                            >
-                              <Eye size={16} /> View Scorecard
-                            </Link>
                             <button
                               onClick={() => handleDeleteMatchAction(id)}
                               className="flex items-center gap-1 rounded-md border border-red-200 text-red-600 hover:bg-red-50 px-3 py-2 text-sm font-black"
@@ -991,92 +919,26 @@ export default function TournamentPage({
                       </div>
                     </div>
 
-                    {/* Stats for completed matches */}
-                    {match.meta.status === "completed" && match.result && (
-                      <div className="bg-surface-dim rounded-lg p-4 border border-outline-variant">
-                        <p className="font-black text-on-surface mb-4 text-center text-lg">
-                          {match.result}
-                        </p>
-                        <div className="grid md:grid-cols-2 gap-6">
-                          {[1, 2].map((innNum) => {
-                            const inn = match.innings[String(innNum)];
-                            if (!inn) return null;
-                            const teamName =
-                              inn.battingTeam === "team1"
-                                ? match.meta.team1
-                                : match.meta.team2;
-                            return (
-                              <div key={innNum}>
-                                <div className="flex justify-between items-end border-b border-outline pb-2 mb-2">
-                                  <h4 className="font-bold text-on-surface">
-                                    {teamName}
-                                  </h4>
-                                  <span className="font-black text-lg">
-                                    {inn.runs}/{inn.wickets}{" "}
-                                    <span className="text-sm text-on-surface-variant font-medium font-sans">
-                                      ({Math.floor(inn.balls / 6)}.
-                                      {inn.balls % 6})
-                                    </span>
-                                  </span>
-                                </div>
-
-                                {/* Batting Table */}
-                                <div className="mb-3">
-                                  <h5 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">
-                                    Batting
-                                  </h5>
-                                  <div className="space-y-1">
-                                    {Object.values(inn.batsmen)
-                                      .filter((b) => b.balls > 0)
-                                      .map((b, i) => (
-                                        <div
-                                          key={i}
-                                          className="flex justify-between text-sm"
-                                        >
-                                          <span>
-                                            {b.name}{" "}
-                                            <span className="text-on-surface-variant text-xs ml-1">
-                                              {b.status === "out" ? "" : "*"}
-                                            </span>
-                                          </span>
-                                          <span className="font-bold">
-                                            {b.runs}{" "}
-                                            <span className="text-on-surface-variant font-medium">
-                                              ({b.balls})
-                                            </span>
-                                          </span>
-                                        </div>
-                                      ))}
-                                  </div>
-                                </div>
-
-                                {/* Bowling Table */}
-                                <div>
-                                  <h5 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">
-                                    Bowling
-                                  </h5>
-                                  <div className="space-y-1">
-                                    {Object.values(inn.bowlers)
-                                      .filter((b) => b.overs > 0 || b.balls > 0)
-                                      .map((b, i) => (
-                                        <div
-                                          key={i}
-                                          className="flex justify-between text-sm"
-                                        >
-                                          <span>{b.name}</span>
-                                          <span className="font-bold">
-                                            {b.wickets}-{b.runs}{" "}
-                                            <span className="text-on-surface-variant font-medium">
-                                              ({b.overs}.{b.balls})
-                                            </span>
-                                          </span>
-                                        </div>
-                                      ))}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
+                    {match.meta.status === "completed" && match.score && (
+                      <div className="bg-surface-dim rounded-lg p-4 border border-outline-variant flex justify-center items-center gap-8">
+                        <div className="text-center">
+                          <h4 className="font-bold text-on-surface">
+                            {match.meta.team1}
+                          </h4>
+                          <span className="font-black text-3xl">
+                            {match.score.team1}
+                          </span>
+                        </div>
+                        <div className="font-black text-outline-variant text-2xl">
+                          -
+                        </div>
+                        <div className="text-center">
+                          <h4 className="font-bold text-on-surface">
+                            {match.meta.team2}
+                          </h4>
+                          <span className="font-black text-3xl">
+                            {match.score.team2}
+                          </span>
                         </div>
                       </div>
                     )}
@@ -1125,15 +987,15 @@ export default function TournamentPage({
                     />
                   </label>
                   <label className="block text-sm font-bold">
-                    Default Overs (Matches)
+                    Match Duration (Minutes)
                     <input
                       type="number"
                       className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal"
-                      value={settingsForm.defaultOvers}
+                      value={settingsForm.matchDurationMinutes}
                       onChange={(e) =>
                         setSettingsForm({
                           ...settingsForm,
-                          defaultOvers: Number(e.target.value),
+                          matchDurationMinutes: Number(e.target.value),
                         })
                       }
                     />
@@ -1150,7 +1012,7 @@ export default function TournamentPage({
                       className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal"
                       value={settingsForm.entryFee}
                       onChange={(e) => setSettingsForm({ ...settingsForm, entryFee: e.target.value })}
-                      placeholder="e.g. $5,000"
+                      placeholder="e.g. $1,500"
                     />
                   </label>
                   <label className="block text-sm font-bold">
@@ -1168,7 +1030,7 @@ export default function TournamentPage({
                       className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal"
                       value={settingsForm.startDate}
                       onChange={(e) => setSettingsForm({ ...settingsForm, startDate: e.target.value })}
-                      placeholder="e.g. Oct 15, 2026"
+                      placeholder="e.g. Nov 01, 2026"
                     />
                   </label>
                   <label className="block text-sm font-bold">
@@ -1177,7 +1039,7 @@ export default function TournamentPage({
                       className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal"
                       value={settingsForm.location}
                       onChange={(e) => setSettingsForm({ ...settingsForm, location: e.target.value })}
-                      placeholder="e.g. Downtown Arena"
+                      placeholder="e.g. Westside Courts"
                     />
                   </label>
                   <label className="block text-sm font-bold">

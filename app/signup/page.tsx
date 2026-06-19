@@ -262,13 +262,22 @@ export default function SignupPage() {
 
                 <div>
                   <label className="block text-[10px] font-black tracking-widest uppercase text-on-surface-variant mb-2">Phone Number</label>
-                  <input 
-                    type="tel" 
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    className="w-full bg-surface border border-outline text-on-surface px-4 py-3 outline-none focus:border-primary transition-colors text-sm"
-                    placeholder="+1 (555) 000-0000"
-                  />
+                  <div className="flex w-full bg-surface border border-outline focus-within:border-primary transition-colors">
+                    <span className="flex items-center px-4 py-3 text-on-surface-variant bg-surface-dim border-r border-outline font-bold text-sm">
+                      +91
+                    </span>
+                    <input 
+                      type="tel" 
+                      value={formData.phone}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setFormData({...formData, phone: val});
+                      }}
+                      className="flex-1 bg-transparent text-on-surface px-4 py-3 outline-none text-sm"
+                      placeholder="98765 43210"
+                      maxLength={10}
+                    />
+                  </div>
                 </div>
 
                 <div>

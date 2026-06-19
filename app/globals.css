@@ -74,7 +74,7 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: theme('colors.surface-container'); 
+  background: theme('colors.surface-dim'); 
 }
 ::-webkit-scrollbar-thumb {
   background: theme('colors.inverse-surface'); 

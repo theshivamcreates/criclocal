@@ -65,8 +65,8 @@ export default function AuthPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-md px-4 py-16">
-        <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-glow">
+      <div className="mx-auto max-w-md px-4 py-16 w-full">
+        <div className="rounded-xl border border-outline bg-surface p-8 shadow-glow">
           <div className="mb-6 flex gap-4 border-b border-surface-dim">
             <button
               className="pb-3 text-lg font-black border-b-2 border-primary text-primary"
@@ -84,7 +84,7 @@ export default function AuthPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
 
             <div>
-              <label className="mb-1 block text-sm font-bold text-slate-700">
+              <label className="mb-1 block text-sm font-bold text-on-surface-variant">
                 Email
               </label>
               <input
@@ -92,12 +92,12 @@ export default function AuthPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-pitch focus:ring-1 focus:ring-pitch"
+                className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 placeholder="you@example.com"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-bold text-slate-700">
+              <label className="mb-1 block text-sm font-bold text-on-surface-variant">
                 Password
               </label>
               <input
@@ -105,13 +105,13 @@ export default function AuthPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-pitch focus:ring-1 focus:ring-pitch"
+                className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 placeholder="••••••••"
               />
             </div>
 
             {error && (
-              <div className="rounded-md bg-red-50 p-3 text-sm font-bold text-red-600">
+              <div className="rounded-md bg-error-container p-3 text-sm font-bold text-on-error-container border border-error">
                 {error}
               </div>
             )}
@@ -127,10 +127,10 @@ export default function AuthPage() {
 
           <div className="relative mt-8">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200"></div>
+              <div className="w-full border-t border-outline"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-2 text-slate-500">
+              <span className="bg-surface px-2 text-on-surface-variant">
                 Or continue with
               </span>
             </div>
@@ -139,7 +139,7 @@ export default function AuthPage() {
           <button
             onClick={handleGoogle}
             disabled={loading}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white py-3 font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg border border-outline bg-surface-dim py-3 font-bold text-on-surface hover:bg-surface-variant disabled:opacity-50 transition-colors"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path

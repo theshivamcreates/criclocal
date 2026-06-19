@@ -21,6 +21,8 @@ export default function ScorerPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [wicketModalOpen, setWicketModalOpen] = useState(false);
+  const [bowlerModalOpen, setBowlerModalOpen] = useState(false);
+  const [nextBowlerName, setNextBowlerName] = useState("");
   const [dismissal, setDismissal] = useState("Bowled");
   const [fielder, setFielder] = useState("");
   const [nextBatsman, setNextBatsman] = useState("");
@@ -66,18 +68,18 @@ export default function ScorerPage() {
 
   useEffect(() => {
     if (!innings?.currentOver || innings.currentOver.length === 0) return;
-    
+
     // Custom rule: the over ends when exactly 6 counting balls have been bowled.
     // Since innings.balls only increments for counting balls, we can just check if it's a multiple of 6.
     // Also ensure we don't auto-end if the last ball was a No Ball (which makes isFreeHit true)
     const isOverComplete = innings.balls > 0 && innings.balls % 6 === 0 && !innings.isFreeHit;
-    
+
     if (isOverComplete) {
       const timer = setTimeout(() => {
         void runAction(
           () => endOver(matchId),
           () => setMatch((current) => current && { ...current, innings: { ...current.innings, [String(current.currentInnings)]: endCurrentOver(getCurrentInnings(current)) } })
-        );
+        ).then(() => setBowlerModalOpen(true));
       }, 2000);
       return () => clearTimeout(timer);
     }
@@ -196,7 +198,7 @@ export default function ScorerPage() {
                 () => {
                   setMatch((current) => current && { ...current, innings: { ...current.innings, [String(current.currentInnings)]: endCurrentOver(getCurrentInnings(current)) } });
                 }
-              )
+              ).then(() => setBowlerModalOpen(true))
             }
           >
             <Square size={18} />
@@ -287,6 +289,69 @@ export default function ScorerPage() {
                 }}
               >
                 Confirm {dismissal}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {bowlerModalOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-end bg-slate-950/50 p-3 sm:place-items-center">
+          <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-black">Next Over</h2>
+              <button className="rounded-md border border-slate-300 p-2" onClick={() => setBowlerModalOpen(false)} title="Close">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <label className="block text-sm font-bold">
+                New Bowler
+                <input list="bowling-team-roster" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" placeholder="Required" value={nextBowlerName} onChange={(event) => setNextBowlerName(event.target.value)} />
+              </label>
+              <button
+                className="w-full rounded-lg bg-slate-900 px-4 py-3 font-black text-white disabled:opacity-50"
+                disabled={busy}
+                onClick={() => {
+                  if (!nextBowlerName.trim()) {
+                    alert("Please enter the next bowler name.");
+                    return;
+                  }
+                  setBowlerModalOpen(false);
+                  const name = nextBowlerName;
+                  setNextBowlerName("");
+                  void runAction(
+                    async () => {
+                      await updatePlayerNames(matchId, { bowlerName: name });
+                    },
+                    () => {
+                      setBowlerName(name);
+                      setMatch((current) => {
+                        if (!current) return current;
+                        const num = String(current.currentInnings);
+                        const inn = current.innings[num];
+                        if (!inn) return current;
+
+                        return {
+                          ...current,
+                          innings: {
+                            ...current.innings,
+                            [num]: {
+                              ...inn,
+                              bowlerKey: name,
+                              bowlers: {
+                                ...inn.bowlers,
+                                [name]: inn.bowlers[name] || { name: name, overs: 0, balls: 0, runs: 0, wickets: 0, wides: 0, noBalls: 0 }
+                              }
+                            }
+                          }
+                        };
+                      });
+                    }
+                  );
+                }}
+              >
+                Confirm Bowler
               </button>
             </div>
           </div>

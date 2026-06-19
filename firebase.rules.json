@@ -7,8 +7,8 @@
       }
     },
     "tournaments": {
+      ".read": true,
       "$tournId": {
-        ".read": true,
         ".write": "auth != null && (data.child('createdBy').val() === auth.uid || !data.exists())"
       }
     }

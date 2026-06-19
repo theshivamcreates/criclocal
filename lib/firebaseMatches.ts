@@ -74,8 +74,12 @@ export function updatePlayerNames(matchId: string, updates: { strikerName?: stri
     if (updates.nonStrikerName && innings.batsmen[nonStrikerKey]) {
       innings.batsmen[nonStrikerKey].name = updates.nonStrikerName;
     }
-    if (updates.bowlerName && innings.bowlers[bowlerKey]) {
-      innings.bowlers[bowlerKey].name = updates.bowlerName;
+    if (updates.bowlerName) {
+      const bKey = updates.bowlerName;
+      innings.bowlerKey = bKey;
+      if (!innings.bowlers[bKey]) {
+        innings.bowlers[bKey] = { name: bKey, overs: 0, balls: 0, runs: 0, wickets: 0, wides: 0, noBalls: 0 };
+      }
     }
     
     if (updates.nextBatsmanName) {
@@ -116,4 +120,32 @@ export function completeMatch(matchId: string, result: string) {
     match.result = result;
     return match;
   });
+}
+
+export function saveTournament(tournamentId: string, data: any) {
+  return set(ref(requireDb(), `tournaments/${tournamentId}`), data);
+}
+
+export function subscribeToTournament(tournamentId: string, callback: (tournament: any) => void) {
+  return onValue(ref(requireDb(), `tournaments/${tournamentId}`), (snap) => {
+    if (snap.exists()) {
+      callback(snap.val());
+    } else {
+      callback(null);
+    }
+  });
+}
+
+import { remove, update } from "firebase/database";
+
+export function deleteMatch(matchId: string) {
+  return remove(ref(requireDb(), `matches/${matchId}`));
+}
+
+export function updateMatch(matchId: string, data: Partial<Match>) {
+  return update(ref(requireDb(), `matches/${matchId}`), data);
+}
+
+export function updateMatchMeta(matchId: string, metaData: Partial<Match['meta']>) {
+  return update(ref(requireDb(), `matches/${matchId}/meta`), metaData);
 }

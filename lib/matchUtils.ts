@@ -80,7 +80,7 @@ export function buildEmptyInnings(battingTeam: "team1" | "team2"): Innings {
   };
 }
 
-export function buildNewMatch(team1: string, team2: string, overs: number, toss: "team1" | "team2", elected: "bat" | "field", createdBy: string, team1Logo?: string, team2Logo?: string, team1Roster?: string[], team2Roster?: string[], team1Color?: string, team2Color?: string): Match {
+export function buildNewMatch(team1: string, team2: string, overs: number, toss: "team1" | "team2", elected: "bat" | "field", createdBy: string, team1Logo?: string, team2Logo?: string, team1Roster?: any[], team2Roster?: any[], team1Color?: string, team2Color?: string, scheduledAt?: number): Match {
   const battingTeam = elected === "bat" ? toss : toss === "team1" ? "team2" : "team1";
 
   const meta: any = {
@@ -89,11 +89,12 @@ export function buildNewMatch(team1: string, team2: string, overs: number, toss:
     overs,
     toss,
     elected,
-    status: "live",
+    status: scheduledAt ? "scheduled" : "live",
     createdBy,
     createdAt: Date.now()
   };
 
+  if (scheduledAt) meta.scheduledAt = scheduledAt;
   if (team1Logo) meta.team1Logo = team1Logo;
   if (team2Logo) meta.team2Logo = team2Logo;
   if (team1Roster) meta.team1Roster = team1Roster;
@@ -114,7 +115,8 @@ export function buildNewMatch(team1: string, team2: string, overs: number, toss:
 export function applyBall(innings: Innings, event: BallEvent): Innings {
   // Custom rule: over is complete if we have a multiple of 6 counting balls and we're not waiting for a free hit.
   // If the user clicks a ball after the over is complete (but before the UI auto-ends it), end it now.
-  if (innings.balls > 0 && innings.balls % 6 === 0 && !innings.isFreeHit) {
+  const hasLegalBalls = (innings.currentOver ?? []).some(isLegalBall);
+  if (innings.balls > 0 && innings.balls % 6 === 0 && !innings.isFreeHit && hasLegalBalls) {
     innings = endCurrentOver(innings);
   }
 
@@ -123,7 +125,7 @@ export function applyBall(innings: Innings, event: BallEvent): Innings {
   const strikerKey = innings.strikerKey || "striker";
   const nonStrikerKey = innings.nonStrikerKey || "nonStriker";
   const bowlerKey = innings.bowlerKey || "bowler";
-  
+
   // Custom rule: Free hits are extra bonus balls that do not count towards the 6-ball over limit
   const countsTowardsOver = legal && !innings.isFreeHit;
   const nextBalls = innings.balls + (countsTowardsOver ? 1 : 0);
@@ -154,7 +156,7 @@ export function applyBall(innings: Innings, event: BallEvent): Innings {
   const isOddRuns = ["1", "3", "5"].includes(event);
   let nextStrikerKey = strikerKey;
   let nextNonStrikerKey = nonStrikerKey;
-  
+
   if (isOddRuns) {
     nextStrikerKey = nonStrikerKey;
     nextNonStrikerKey = strikerKey;
@@ -193,10 +195,10 @@ export function undoLastBall(innings: Innings): Innings {
 
   const runs = getRunsFromEvent(last);
   const legal = isLegalBall(last);
-  
+
   let originalStrikerKey = innings.strikerKey || "striker";
   let originalNonStrikerKey = innings.nonStrikerKey || "nonStriker";
-  
+
   if (runs % 2 !== 0) {
     originalStrikerKey = innings.nonStrikerKey || "nonStriker";
     originalNonStrikerKey = innings.strikerKey || "striker";
@@ -221,30 +223,30 @@ export function undoLastBall(innings: Innings): Innings {
     },
     batsmen: batter
       ? {
-          ...innings.batsmen,
-          [batterKey]: {
-            ...batter,
-            runs: Math.max(0, batter.runs - (["WD", "NB", "B", "LB", "W"].includes(last) ? 0 : runs)),
-            balls: Math.max(0, batter.balls - (legal ? 1 : 0)),
-            fours: Math.max(0, batter.fours - (last === "4" ? 1 : 0)),
-            sixes: Math.max(0, batter.sixes - (last === "6" ? 1 : 0)),
-            status: last === "W" ? "batting" : batter.status
-          }
+        ...innings.batsmen,
+        [batterKey]: {
+          ...batter,
+          runs: Math.max(0, batter.runs - (["WD", "NB", "B", "LB", "W"].includes(last) ? 0 : runs)),
+          balls: Math.max(0, batter.balls - (legal ? 1 : 0)),
+          fours: Math.max(0, batter.fours - (last === "4" ? 1 : 0)),
+          sixes: Math.max(0, batter.sixes - (last === "6" ? 1 : 0)),
+          status: last === "W" ? "batting" : batter.status
         }
+      }
       : innings.batsmen,
     bowlers: bowler
       ? {
-          ...innings.bowlers,
-          [bowlerKey]: {
-            ...bowler,
-            runs: Math.max(0, bowler.runs - runs),
-            wickets: Math.max(0, bowler.wickets - (last === "W" ? 1 : 0)),
-            wides: Math.max(0, bowler.wides - (last === "WD" ? 1 : 0)),
-            noBalls: Math.max(0, bowler.noBalls - (last === "NB" ? 1 : 0)),
-            balls: nextBowlerBalls,
-            overs: Math.floor(nextBowlerBalls / 6)
-          }
+        ...innings.bowlers,
+        [bowlerKey]: {
+          ...bowler,
+          runs: Math.max(0, bowler.runs - runs),
+          wickets: Math.max(0, bowler.wickets - (last === "W" ? 1 : 0)),
+          wides: Math.max(0, bowler.wides - (last === "WD" ? 1 : 0)),
+          noBalls: Math.max(0, bowler.noBalls - (last === "NB" ? 1 : 0)),
+          balls: nextBowlerBalls,
+          overs: Math.floor(nextBowlerBalls / 6)
         }
+      }
       : innings.bowlers,
     currentOver: currentOver.slice(0, -1),
     partnership: {

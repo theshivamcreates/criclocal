@@ -1,0 +1,686 @@
+"use client";
+
+import Link from "next/link";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { onAuthStateChanged, type User } from "firebase/auth";
+import { onValue, ref as dbRef } from "firebase/database";
+import { Eye, LogIn, MonitorUp, Plus, Smartphone, Users, Trophy, Calendar, Upload, Pencil, Trash2, Play } from "lucide-react";
+import { AppShell } from "@/components/AppShell";
+import { auth, db, storage, isFirebaseConfigured } from "@/lib/firebase";
+import { deleteMatch, saveMatch, saveTournament, subscribeToTournament, updateMatchMeta } from "@/lib/firebaseMatches";
+import { buildNewMatch } from "@/lib/matchUtils";
+import type { Match, Player, Tournament } from "@/types/match";
+import { v4 as uuidv4 } from "uuid";
+import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { use } from "react";
+
+export default function TournamentPage({ params }: { params: Promise<{ tournamentId: string }> }) {
+  const resolvedParams = use(params);
+  const tournamentId = resolvedParams.tournamentId;
+  const [user, setUser] = useState<User | null>(null);
+  const [tournament, setTournament] = useState<Tournament | null>(null);
+  const [matches, setMatches] = useState<Record<string, Match>>({});
+  const [activeTab, setActiveTab] = useState<"teams" | "matches" | "settings">("matches");
+  
+  // Team creation state
+  const [teamForm, setTeamForm] = useState<{name: string, color: string, roster: Player[]}>({ name: "", color: "#004ba0", roster: [] });
+  const [teamLogoFile, setTeamLogoFile] = useState<File | null>(null);
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  
+  // Match creation state
+  const [matchForm, setMatchForm] = useState({ team1: "", team2: "", overs: 20, toss: "", elected: "bat", scheduledDate: "", scheduledTime: "" });
+  const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
+  
+  const [isUploading, setIsUploading] = useState(false);
+  const [message, setMessage] = useState("");
+  
+  // Settings state
+  const [settingsForm, setSettingsForm] = useState({ name: "", maxPlayersPerTeam: 15, defaultOvers: 20 });
+  const [hasInitializedSettings, setHasInitializedSettings] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!auth) return;
+    return onAuthStateChanged(auth, setUser);
+  }, []);
+
+  useEffect(() => {
+    if (!db) return;
+    const unsubTournament = subscribeToTournament(tournamentId, (t) => {
+      setTournament(t);
+      setIsLoading(false);
+    });
+    const unsubMatches = onValue(
+      dbRef(db, "matches"),
+      (snapshot) => setMatches(snapshot.val() ?? {}),
+      (error) => setMessage(`Error reading matches: ${error.message}`)
+    );
+    return () => {
+      unsubTournament();
+      unsubMatches();
+    };
+  }, [tournamentId]);
+
+  const tournamentMatches = useMemo(() => {
+    return Object.entries(matches)
+      .filter(([, match]) => match.meta.tournamentId === tournamentId)
+      .sort(([, a], [, b]) => b.meta.createdAt - a.meta.createdAt);
+  }, [matches, tournamentId]);
+
+  const teamList = useMemo(() => {
+    if (!tournament) return [];
+    return Object.entries(tournament.teams || {}).map(([id, team]) => ({ id, ...team }));
+  }, [tournament]);
+
+  // Set default teams in match form when teams are loaded
+  useEffect(() => {
+    if (teamList.length >= 2 && !matchForm.team1 && !matchForm.team2) {
+      setMatchForm(prev => ({
+        ...prev,
+        team1: teamList[0].id,
+        team2: teamList[1].id,
+        toss: teamList[0].id
+      }));
+    }
+  }, [teamList]);
+
+  // Sync settings when tournament loads
+  useEffect(() => {
+    if (tournament && !hasInitializedSettings) {
+      const s = tournament.settings || { maxPlayersPerTeam: 15, defaultOvers: 20 };
+      setSettingsForm({ name: tournament.name, maxPlayersPerTeam: s.maxPlayersPerTeam, defaultOvers: s.defaultOvers });
+      setMatchForm(prev => ({ ...prev, overs: s.defaultOvers }));
+      setHasInitializedSettings(true);
+    }
+  }, [tournament, hasInitializedSettings]);
+
+  async function handleSaveSettings(e: FormEvent) {
+    e.preventDefault();
+    if (!tournament) return;
+    setIsUploading(true);
+    setMessage("Saving settings...");
+    try {
+      await saveTournament(tournamentId, {
+        ...tournament,
+        name: settingsForm.name,
+        settings: {
+          maxPlayersPerTeam: Number(settingsForm.maxPlayersPerTeam),
+          defaultOvers: Number(settingsForm.defaultOvers)
+        }
+      });
+      setMessage("Settings saved!");
+    } catch (err: any) {
+      setMessage(`Error saving settings: ${err.message}`);
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function handleAddTeam(e: FormEvent) {
+    e.preventDefault();
+    if (!tournament) return;
+    if (!teamForm.name.trim()) return setMessage("Team name is required.");
+    
+    setIsUploading(true);
+    setMessage(editingTeamId ? "Updating team..." : "Adding team...");
+    
+    try {
+      const teamId = editingTeamId || uuidv4();
+      let logoUrl = "";
+      
+      if (teamLogoFile && storage) {
+        const logoRef = storageRef(storage, `logos/${tournamentId}_${teamId}`);
+        await uploadBytes(logoRef, teamLogoFile);
+        logoUrl = await getDownloadURL(logoRef);
+      }
+      
+      const updatedTournament = {
+        ...tournament,
+        teams: {
+          ...(tournament.teams || {}),
+          [teamId]: {
+            name: teamForm.name,
+            color: teamForm.color,
+            ...(logoUrl ? { logo: logoUrl } : (editingTeamId && tournament.teams[editingTeamId]?.logo ? { logo: tournament.teams[editingTeamId].logo } : {})),
+            roster: teamForm.roster
+          }
+        }
+      };
+      
+      await saveTournament(tournamentId, updatedTournament);
+      setTeamForm({ name: "", color: "#004ba0", roster: [] });
+      setTeamLogoFile(null);
+      setEditingTeamId(null);
+      setMessage(editingTeamId ? "Team updated successfully." : "Team added successfully.");
+    } catch (err: any) {
+      setMessage(`Error saving team: ${err.message}`);
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function handleDeleteTeam(teamId: string) {
+    if (!tournament || !confirm("Are you sure you want to delete this team?")) return;
+    try {
+      const updatedTeams = { ...tournament.teams };
+      delete updatedTeams[teamId];
+      await saveTournament(tournamentId, { ...tournament, teams: updatedTeams });
+      setMessage("Team deleted.");
+    } catch (err: any) {
+      setMessage(`Error deleting team: ${err.message}`);
+    }
+  }
+
+  function handleEditTeamClick(teamId: string, team: any) {
+    setEditingTeamId(teamId);
+    setTeamForm({
+      name: team.name,
+      color: team.color || "#004ba0",
+      roster: Array.isArray(team.roster) 
+        ? team.roster.map((p: any) => typeof p === 'string' ? { name: p, role: 'Player' } : p)
+        : []
+    });
+    setTeamLogoFile(null);
+    setActiveTab("teams");
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function handleCreateMatch(e: FormEvent) {
+    e.preventDefault();
+    if (!user) return setMessage("Must be logged in.");
+    if (!tournament) return;
+    if (!matchForm.team1 || !matchForm.team2 || matchForm.team1 === matchForm.team2) {
+      return setMessage("Select two different teams.");
+    }
+
+    const t1 = tournament.teams[matchForm.team1];
+    const t2 = tournament.teams[matchForm.team2];
+    
+    if (!t1 || !t2) return setMessage("Selected teams not found.");
+
+    setIsUploading(true);
+    setMessage(editingMatchId ? "Updating match..." : "Creating match...");
+
+    try {
+      const matchId = editingMatchId || uuidv4();
+      let scheduledAt: number | undefined = undefined;
+      
+      if (matchForm.scheduledDate && matchForm.scheduledTime) {
+        scheduledAt = new Date(`${matchForm.scheduledDate}T${matchForm.scheduledTime}`).getTime();
+      }
+
+      if (editingMatchId) {
+        await updateMatchMeta(matchId, {
+          team1: t1.name, team2: t2.name,
+          team1Logo: t1.logo || "", team2Logo: t2.logo || "",
+          team1Roster: t1.roster || [], team2Roster: t2.roster || [],
+          team1Color: t1.color || "", team2Color: t2.color || "",
+          overs: Number(matchForm.overs),
+          toss: matchForm.toss === matchForm.team1 ? "team1" : "team2",
+          elected: matchForm.elected as "bat" | "field",
+          ...(scheduledAt ? { scheduledAt } : {})
+        });
+      } else {
+        const match = buildNewMatch(
+          t1.name, t2.name, Number(matchForm.overs), 
+          matchForm.toss === matchForm.team1 ? "team1" : "team2", 
+          matchForm.elected as "bat" | "field", user.uid,
+          t1.logo, t2.logo, t1.roster, t2.roster, t1.color, t2.color,
+          scheduledAt
+        );
+        match.meta.tournamentId = tournamentId;
+        await saveMatch(matchId, match);
+      }
+      
+      setMessage(editingMatchId ? "Match updated!" : "Match created!");
+      setEditingMatchId(null);
+      setMatchForm(prev => ({...prev, scheduledDate: "", scheduledTime: ""}));
+    } catch (err: any) {
+      setMessage(`Error saving match: ${err.message}`);
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function handleDeleteMatchAction(matchId: string) {
+    if (!confirm("Are you sure you want to delete this match?")) return;
+    try {
+      await deleteMatch(matchId);
+      setMessage("Match deleted.");
+    } catch (err: any) {
+      setMessage(`Error deleting match: ${err.message}`);
+    }
+  }
+
+  async function handleGoLive(matchId: string) {
+    try {
+      await updateMatchMeta(matchId, { status: "live" });
+      setMessage("Match is now LIVE!");
+    } catch (err: any) {
+      setMessage(`Error starting match: ${err.message}`);
+    }
+  }
+
+  function handleEditMatchClick(matchId: string, match: Match) {
+    const t1Id = Object.keys(tournament?.teams || {}).find(k => tournament?.teams[k].name === match.meta.team1) || "";
+    const t2Id = Object.keys(tournament?.teams || {}).find(k => tournament?.teams[k].name === match.meta.team2) || "";
+    
+    setEditingMatchId(matchId);
+    setMatchForm({
+      team1: t1Id,
+      team2: t2Id,
+      overs: match.meta.overs,
+      toss: match.meta.toss === "team1" ? t1Id : t2Id,
+      elected: match.meta.elected,
+      scheduledDate: match.meta.scheduledAt ? new Date(match.meta.scheduledAt).toISOString().split('T')[0] : "",
+      scheduledTime: match.meta.scheduledAt ? new Date(match.meta.scheduledAt).toISOString().split('T')[1].substring(0,5) : ""
+    });
+    setActiveTab("matches");
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  if (isLoading) {
+    return (
+      <AppShell>
+        <div className="p-8 text-center text-slate-500 font-medium mt-10">Loading tournament data...</div>
+      </AppShell>
+    );
+  }
+
+  if (!tournament) {
+    return (
+      <AppShell>
+        <div className="p-8 text-center mt-10">
+          <h2 className="text-2xl font-black mb-2">Tournament Not Found</h2>
+          <p className="text-slate-500 mb-6">This tournament may have been deleted, or the URL is incorrect.</p>
+          <Link href="/dashboard" className="px-6 py-3 bg-slate-900 text-white rounded-lg font-black inline-flex items-center gap-2">
+            Return to Dashboard
+          </Link>
+        </div>
+      </AppShell>
+    );
+  }
+
+  return (
+    <AppShell>
+      <div className="bg-ink text-white py-8">
+        <div className="mx-auto max-w-6xl px-4 flex items-center gap-4">
+          <div className="bg-emerald-600/20 p-4 rounded-xl border border-emerald-500/30">
+            <Trophy size={48} className="text-emerald-400" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-black">{tournament.name}</h1>
+            <p className="text-slate-400 font-medium mt-1">
+              Created {new Date(tournament.createdAt).toLocaleDateString()} · {teamList.length} Teams
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-6xl px-4 py-8">
+        <div className="flex gap-4 mb-8">
+          <button 
+            className={`px-6 py-3 font-black rounded-lg transition-colors ${activeTab === "matches" ? "bg-slate-900 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"}`}
+            onClick={() => setActiveTab("matches")}
+          >
+            Schedule & Matches
+          </button>
+          <button 
+            className={`px-6 py-3 font-black rounded-lg transition-colors ${activeTab === "teams" ? "bg-slate-900 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"}`}
+            onClick={() => setActiveTab("teams")}
+          >
+            Teams Roster
+          </button>
+          <button 
+            className={`px-6 py-3 font-black rounded-lg transition-colors ${activeTab === "settings" ? "bg-slate-900 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"}`}
+            onClick={() => setActiveTab("settings")}
+          >
+            Settings
+          </button>
+        </div>
+
+        {activeTab === "teams" ? (
+          <div className="grid lg:grid-cols-[24rem_1fr] gap-6">
+            <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm h-fit">
+              <h2 className="text-lg font-black mb-4">Add Team</h2>
+              
+              {message && (
+                <div className={`mb-4 rounded-md p-3 text-sm font-medium ${message.includes('Error') ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                  {message}
+                </div>
+              )}
+              
+              <form className="space-y-4" onSubmit={handleAddTeam}>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={teamForm.color} onChange={(e) => setTeamForm({ ...teamForm, color: e.target.value })} className="h-10 w-10 cursor-pointer rounded-md border-0 p-0" title="Team Color" />
+                  <input required className="w-full rounded-md border border-slate-300 px-3 py-2 font-bold" value={teamForm.name} onChange={(event) => setTeamForm({ ...teamForm, name: event.target.value })} placeholder="Team Name" />
+                </div>
+                
+                <label className="mb-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-slate-300 bg-white px-3 py-2 text-sm text-slate-500 hover:bg-slate-50">
+                  <Upload size={16} />
+                  {teamLogoFile ? teamLogoFile.name : "Upload Logo (Optional)"}
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => setTeamLogoFile(e.target.files?.[0] || null)} />
+                </label>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-bold">
+                      Roster ({teamForm.roster.length}/{tournament.settings?.maxPlayersPerTeam || 15})
+                    </label>
+                    {teamForm.roster.length < (tournament.settings?.maxPlayersPerTeam || 15) && (
+                      <button type="button" onClick={() => setTeamForm({...teamForm, roster: [...teamForm.roster, {name: "", role: "Player"}]})} className="text-xs font-bold text-pitch hover:underline">+ Add Player</button>
+                    )}
+                  </div>
+                  {teamForm.roster.map((player, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <input required className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" value={player.name} onChange={(e) => {
+                        const newRoster = [...teamForm.roster];
+                        newRoster[idx].name = e.target.value;
+                        setTeamForm({...teamForm, roster: newRoster});
+                      }} placeholder={`Player ${idx + 1}`} />
+                      <select className="rounded-md border border-slate-300 px-2 py-2 text-sm" value={player.role} onChange={(e) => {
+                        const newRoster = [...teamForm.roster];
+                        newRoster[idx].role = e.target.value as Player['role'];
+                        setTeamForm({...teamForm, roster: newRoster});
+                      }}>
+                        <option value="Player">Player</option>
+                        <option value="Batsman">Batsman</option>
+                        <option value="Bowler">Bowler</option>
+                        <option value="All-Rounder">All-Rounder</option>
+                        <option value="Wicket-Keeper">Wicket-Keeper</option>
+                      </select>
+                      <button type="button" onClick={() => {
+                        const newRoster = [...teamForm.roster];
+                        newRoster.splice(idx, 1);
+                        setTeamForm({...teamForm, roster: newRoster});
+                      }} className="text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="flex gap-2">
+                  {editingTeamId && (
+                    <button type="button" onClick={() => { setEditingTeamId(null); setTeamForm({name:"", color:"#004ba0", roster:[]}); }} className="w-full rounded-lg bg-slate-200 px-4 py-3 font-black text-slate-700">Cancel</button>
+                  )}
+                  <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-pitch px-4 py-3 font-black text-white disabled:opacity-50" disabled={isUploading || !teamForm.name}>
+                    {editingTeamId ? "Update Team" : <><Plus size={18} /> Add Team</>}
+                  </button>
+                </div>
+              </form>
+            </aside>
+            <section className="grid sm:grid-cols-2 gap-4 h-fit">
+              {teamList.map(team => (
+                <div key={team.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                      {team.logo ? (
+                        <img src={team.logo} alt={team.name} className="h-14 w-14 rounded-full border-2 border-white object-cover shadow-sm bg-slate-100 flex-shrink-0" />
+                      ) : (
+                        <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full border-2 border-white bg-slate-100 font-black shadow-sm text-white" style={{ backgroundColor: team.color }}>
+                          {team.name.substring(0, 3).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <h3 className="font-black text-lg">{team.name}</h3>
+                        <p className="text-sm text-slate-500 mt-1">{team.roster?.length || 0} players registered</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleEditTeamClick(team.id, team)} className="text-slate-400 hover:text-pitch"><Pencil size={16}/></button>
+                      <button onClick={() => handleDeleteTeam(team.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {teamList.length === 0 && (
+                <div className="sm:col-span-2 rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
+                  No teams added yet. Add teams to start scheduling matches.
+                </div>
+              )}
+            </section>
+          </div>
+        ) : activeTab === "matches" ? (
+          <div className="grid lg:grid-cols-[26rem_1fr] gap-6">
+            <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm h-fit">
+              <h2 className="text-lg font-black mb-4">Schedule Match</h2>
+              {teamList.length < 2 ? (
+                <div className="rounded-md bg-amber-50 p-4 text-sm text-amber-800 font-medium">
+                  Add at least 2 teams in the Teams tab to schedule a match.
+                </div>
+              ) : (
+                <form className="space-y-4" onSubmit={handleCreateMatch}>
+                  <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-100">
+                    <label className="block text-sm font-bold">
+                      Team 1
+                      <select required className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-normal" value={matchForm.team1} onChange={(e) => setMatchForm({ ...matchForm, team1: e.target.value })}>
+                        <option value="">Select Team</option>
+                        {teamList.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      </select>
+                    </label>
+                    <div className="text-center font-black text-slate-400 text-sm">VS</div>
+                    <label className="block text-sm font-bold">
+                      Team 2
+                      <select required className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-normal" value={matchForm.team2} onChange={(e) => setMatchForm({ ...matchForm, team2: e.target.value })}>
+                        <option value="">Select Team</option>
+                        {teamList.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <label className="block text-sm font-bold">
+                      Overs
+                      <input className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-normal" min={1} max={50} type="number" value={matchForm.overs} onChange={(e) => setMatchForm({ ...matchForm, overs: Number(e.target.value) })} />
+                    </label>
+                    <label className="block text-sm font-bold">
+                      Toss
+                      <select className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-normal" value={matchForm.toss} onChange={(e) => setMatchForm({ ...matchForm, toss: e.target.value })}>
+                        <option value={matchForm.team1}>Team 1</option>
+                        <option value={matchForm.team2}>Team 2</option>
+                      </select>
+                    </label>
+                    <label className="block text-sm font-bold">
+                      Elected
+                      <select className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-normal" value={matchForm.elected} onChange={(e) => setMatchForm({ ...matchForm, elected: e.target.value })}>
+                        <option value="bat">Bat</option>
+                        <option value="field">Field</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <label className="block text-sm font-bold">
+                      Scheduled Date
+                      <input type="date" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-normal" value={matchForm.scheduledDate} onChange={(e) => setMatchForm({...matchForm, scheduledDate: e.target.value})} />
+                    </label>
+                    <label className="block text-sm font-bold">
+                      Scheduled Time
+                      <input type="time" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-normal" value={matchForm.scheduledTime} onChange={(e) => setMatchForm({...matchForm, scheduledTime: e.target.value})} />
+                    </label>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    {editingMatchId && (
+                      <button type="button" onClick={() => { setEditingMatchId(null); setMatchForm(prev => ({...prev, scheduledDate:"", scheduledTime:""})); }} className="w-full rounded-lg bg-slate-200 px-4 py-3 font-black text-slate-700">Cancel</button>
+                    )}
+                    <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-pitch px-4 py-3 font-black text-white disabled:opacity-50" disabled={isUploading}>
+                      <Calendar size={18} /> {editingMatchId ? "Update Match" : "Schedule Match"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </aside>
+            
+            <section className="space-y-4">
+              {tournamentMatches.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
+                  No matches scheduled yet.
+                </div>
+              ) : (
+                tournamentMatches.map(([id, match]) => (
+                  <article key={id} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex -space-x-2">
+                          {match.meta.team1Logo ? (
+                            <img src={match.meta.team1Logo} alt={match.meta.team1} className="h-10 w-10 rounded-full border-2 border-white object-cover shadow-sm bg-slate-100" />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-xs font-black shadow-sm text-white" style={{ backgroundColor: match.meta.team1Color }}>{match.meta.team1.substring(0, 3).toUpperCase()}</div>
+                          )}
+                          {match.meta.team2Logo ? (
+                            <img src={match.meta.team2Logo} alt={match.meta.team2} className="h-10 w-10 rounded-full border-2 border-white object-cover shadow-sm bg-slate-100" />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-xs font-black shadow-sm text-white" style={{ backgroundColor: match.meta.team2Color }}>{match.meta.team2.substring(0, 3).toUpperCase()}</div>
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-black leading-tight">
+                            {match.meta.team1} vs {match.meta.team2}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-full tracking-wide ${match.meta.status === 'live' ? 'bg-red-100 text-red-700' : match.meta.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : match.meta.status === 'scheduled' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                              {match.meta.status}
+                            </span>
+                            <span className="text-sm text-slate-500 font-medium">
+                              {match.meta.overs} overs
+                            </span>
+                            {match.meta.scheduledAt && (
+                              <span className="text-sm text-slate-500 font-medium ml-2">
+                                • {new Date(match.meta.scheduledAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {match.meta.status === "scheduled" && (
+                          <>
+                            <button onClick={() => handleGoLive(id)} className="flex items-center gap-1 rounded-md bg-amber-500 hover:bg-amber-600 px-3 py-2 text-sm font-black text-white">
+                              <Play size={16} /> Go Live
+                            </button>
+                            <button onClick={() => handleEditMatchClick(id, match)} className="flex items-center gap-1 rounded-md border border-slate-300 hover:bg-slate-50 px-3 py-2 text-sm font-black">
+                              <Pencil size={16} /> Edit
+                            </button>
+                            <button onClick={() => handleDeleteMatchAction(id)} className="flex items-center gap-1 rounded-md border border-red-200 text-red-600 hover:bg-red-50 px-3 py-2 text-sm font-black">
+                              <Trash2 size={16} /> Delete
+                            </button>
+                          </>
+                        )}
+                        {(match.meta.status === "upcoming" || match.meta.status === "live") && (
+                          <>
+                            <Link className="flex items-center gap-1 rounded-md bg-slate-900 px-3 py-2 text-sm font-black text-white" href={`/match/${id}/score`}>
+                              <Smartphone size={16} /> Score
+                            </Link>
+                            <Link className="flex items-center gap-1 rounded-md border border-slate-300 hover:bg-slate-50 px-3 py-2 text-sm font-black" href={`/match/${id}/live`}>
+                              <Eye size={16} /> Live
+                            </Link>
+                            <button onClick={() => handleEditMatchClick(id, match)} className="flex items-center gap-1 rounded-md border border-slate-300 hover:bg-slate-50 px-3 py-2 text-sm font-black">
+                              <Pencil size={16} /> Edit
+                            </button>
+                            <button onClick={() => handleDeleteMatchAction(id)} className="flex items-center gap-1 rounded-md border border-red-200 text-red-600 hover:bg-red-50 px-3 py-2 text-sm font-black">
+                              <Trash2 size={16} /> Delete
+                            </button>
+                          </>
+                        )}
+                        {match.meta.status === "completed" && (
+                          <>
+                            <Link className="flex items-center gap-1 rounded-md bg-slate-100 hover:bg-slate-200 px-3 py-2 text-sm font-black" href={`/match/${id}/live`}>
+                              <Eye size={16} /> View Scorecard
+                            </Link>
+                            <button onClick={() => handleDeleteMatchAction(id)} className="flex items-center gap-1 rounded-md border border-red-200 text-red-600 hover:bg-red-50 px-3 py-2 text-sm font-black">
+                              <Trash2 size={16} /> Delete
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Stats for completed matches */}
+                    {match.meta.status === "completed" && match.result && (
+                      <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
+                        <p className="font-black text-slate-900 mb-4 text-center text-lg">{match.result}</p>
+                        <div className="grid md:grid-cols-2 gap-6">
+                          {[1, 2].map(innNum => {
+                            const inn = match.innings[String(innNum)];
+                            if (!inn) return null;
+                            const teamName = inn.battingTeam === "team1" ? match.meta.team1 : match.meta.team2;
+                            return (
+                              <div key={innNum}>
+                                <div className="flex justify-between items-end border-b border-slate-200 pb-2 mb-2">
+                                  <h4 className="font-bold text-slate-700">{teamName}</h4>
+                                  <span className="font-black text-lg">{inn.runs}/{inn.wickets} <span className="text-sm text-slate-500 font-medium font-sans">({Math.floor(inn.balls/6)}.{inn.balls%6})</span></span>
+                                </div>
+                                
+                                {/* Batting Table */}
+                                <div className="mb-3">
+                                  <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Batting</h5>
+                                  <div className="space-y-1">
+                                    {Object.values(inn.batsmen).filter(b => b.balls > 0).map((b, i) => (
+                                      <div key={i} className="flex justify-between text-sm">
+                                        <span>{b.name} <span className="text-slate-400 text-xs ml-1">{b.status === "out" ? "" : "*"}</span></span>
+                                        <span className="font-bold">{b.runs} <span className="text-slate-400 font-medium">({b.balls})</span></span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Bowling Table */}
+                                <div>
+                                  <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Bowling</h5>
+                                  <div className="space-y-1">
+                                    {Object.values(inn.bowlers).filter(b => b.overs > 0 || b.balls > 0).map((b, i) => (
+                                      <div key={i} className="flex justify-between text-sm">
+                                        <span>{b.name}</span>
+                                        <span className="font-bold">{b.wickets}-{b.runs} <span className="text-slate-400 font-medium">({b.overs}.{b.balls})</span></span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                                
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </article>
+                ))
+              )}
+            </section>
+          </div>
+        ) : activeTab === "settings" ? (
+          <div className="max-w-xl mx-auto rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-2xl font-black mb-6">Tournament Settings</h2>
+            
+            {message && (
+              <div className={`mb-6 rounded-md p-3 text-sm font-medium ${message.includes('Error') ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                {message}
+              </div>
+            )}
+            
+            <form className="space-y-6" onSubmit={handleSaveSettings}>
+              <label className="block">
+                <span className="block text-sm font-bold mb-1">Tournament Name</span>
+                <input required className="w-full rounded-md border border-slate-300 px-3 py-2 font-normal" value={settingsForm.name} onChange={(e) => setSettingsForm({ ...settingsForm, name: e.target.value })} />
+              </label>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <label className="block">
+                  <span className="block text-sm font-bold mb-1">Max Players per Team</span>
+                  <input required type="number" min={1} max={50} className="w-full rounded-md border border-slate-300 px-3 py-2 font-normal" value={settingsForm.maxPlayersPerTeam} onChange={(e) => setSettingsForm({ ...settingsForm, maxPlayersPerTeam: Number(e.target.value) })} />
+                </label>
+                <label className="block">
+                  <span className="block text-sm font-bold mb-1">Default Overs</span>
+                  <input required type="number" min={1} max={100} className="w-full rounded-md border border-slate-300 px-3 py-2 font-normal" value={settingsForm.defaultOvers} onChange={(e) => setSettingsForm({ ...settingsForm, defaultOvers: Number(e.target.value) })} />
+                </label>
+              </div>
+              
+              <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-pitch px-4 py-3 font-black text-white disabled:opacity-50" disabled={isUploading}>
+                Save Settings
+              </button>
+            </form>
+          </div>
+        ) : null}
+      </div>
+    </AppShell>
+  );
+}

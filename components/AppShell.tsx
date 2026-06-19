@@ -19,10 +19,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <LayoutDashboard size={16} />
               Dashboard
             </Link>
-            <Link className="flex items-center gap-1 rounded-md px-3 py-2 hover:bg-slate-100" href="/tournament/demo">
-              <Trophy size={16} />
-              Tournament
-            </Link>
           </nav>
         </div>
       </header>

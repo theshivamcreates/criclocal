@@ -43,21 +43,47 @@ export interface Innings {
   isFreeHit?: boolean;
 }
 
+export interface Player {
+  name: string;
+  role: "Batsman" | "Bowler" | "All-Rounder" | "Wicket-Keeper" | "Fielder" | "Player";
+}
+
 export interface MatchMeta {
   team1: string;
   team2: string;
   team1Logo?: string;
   team2Logo?: string;
-  team1Roster?: string[];
-  team2Roster?: string[];
+  team1Roster?: Player[];
+  team2Roster?: Player[];
   team1Color?: string;
   team2Color?: string;
   overs: number;
   toss: "team1" | "team2";
   elected: "bat" | "field";
-  status: "upcoming" | "live" | "completed";
+  status: "scheduled" | "upcoming" | "live" | "completed";
+  scheduledAt?: number;
   createdBy: string;
   createdAt: number;
+  tournamentId?: string;
+}
+
+export interface TournamentTeam {
+  name: string;
+  color?: string;
+  logo?: string;
+  roster?: Player[];
+}
+
+export interface Tournament {
+  name: string;
+  createdBy: string;
+  createdAt: number;
+  teams: Record<string, TournamentTeam>;
+  matches?: string[];
+  settings?: {
+    maxPlayersPerTeam: number;
+    defaultOvers: number;
+  };
 }
 
 export interface Match {
@@ -65,10 +91,4 @@ export interface Match {
   innings: Record<string, Innings>;
   currentInnings: number;
   result: string | null;
-}
-
-export interface Tournament {
-  name: string;
-  createdBy: string;
-  matches: string[];
 }

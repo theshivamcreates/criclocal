@@ -241,23 +241,25 @@ export default function PlayersPage() {
       {/* Player Modal */}
       {selectedPlayer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-surface w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]">
+          <div className="bg-surface w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative max-h-[90vh]">
             
-            {/* Modal Header/Banner */}
-            <div className="h-32 bg-surface-dim border-b border-outline relative shrink-0">
-               <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] mix-blend-overlay"></div>
-               <button 
-                 onClick={() => setSelectedPlayer(null)}
-                 className="absolute top-4 right-4 bg-black/50 text-white rounded-full p-2 hover:bg-primary transition-colors z-10"
-               >
-                 <X size={20} />
-               </button>
-            </div>
+            <button 
+              onClick={() => setSelectedPlayer(null)}
+              className="absolute top-4 right-4 bg-black/50 text-white rounded-full p-2 hover:bg-primary transition-colors z-20"
+            >
+              <X size={20} />
+            </button>
 
-            {/* Scrollable Content */}
-            <div className="px-8 pb-8 relative overflow-y-auto">
-              {/* Profile Photo */}
-              <div className="absolute -top-16 left-8">
+            <div className="overflow-y-auto h-full w-full relative">
+              {/* Modal Header/Banner */}
+              <div className="h-32 bg-surface-dim border-b border-outline relative shrink-0">
+                 <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] mix-blend-overlay"></div>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="px-8 pb-8 relative">
+                {/* Profile Photo */}
+                <div className="absolute -top-16 left-8">
                 {selectedPlayer.photoURL ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img src={selectedPlayer.photoURL} alt={selectedPlayer.name} className="w-32 h-32 rounded-full border-[6px] border-surface object-cover bg-surface-dim shadow-md" />

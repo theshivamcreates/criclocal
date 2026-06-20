@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Eye, RotateCcw, Square, Tv, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { useAdmin } from "@/hooks/useAdmin";
 import { OverHistory } from "@/components/OverHistory";
 import { ScoreButtons } from "@/components/ScoreButtons";
 import { Scoreboard } from "@/components/Scoreboard";
@@ -71,6 +72,8 @@ export default function ScorerPage() {
 
   const [strikerName, setStrikerName] = useState("");
   const [nonStrikerName, setNonStrikerName] = useState("");
+  const [editWickets, setEditWickets] = useState(0);
+  const { isAdmin, loading } = useAdmin();
   const [bowlerName, setBowlerName] = useState("");
 
   useEffect(() => {
@@ -230,6 +233,18 @@ export default function ScorerPage() {
       </AppShell>
     );
   }
+
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="flex h-screen items-center justify-center">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!isAdmin) return null;
 
   return (
     <AppShell>

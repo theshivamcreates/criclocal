@@ -42,7 +42,7 @@ export default function AuthPage() {
       } else {
         await registerWithEmail(email, password, name, referralCode);
       }
-      router.push("/dashboard");
+      router.push("/");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -55,7 +55,7 @@ export default function AuthPage() {
     setLoading(true);
     try {
       await loginWithGoogle(isLogin ? undefined : referralCode);
-      router.push("/dashboard");
+      router.push("/");
     } catch (err: any) {
       setError(err.message);
     } finally {

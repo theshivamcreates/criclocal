@@ -22,6 +22,7 @@ import {
   addFootballGoal,
   reopenFootballMatch,
 } from "@/lib/firebaseFootball";
+import { useAdmin } from "@/hooks/useAdmin";
 import type { FootballMatch } from "@/types/football";
 
 export default function FootballScorePage({
@@ -41,6 +42,7 @@ export default function FootballScorePage({
   const [scorerName, setScorerName] = useState("");
   const [assistName, setAssistName] = useState("");
   const [goalTime, setGoalTime] = useState("");
+  const { isAdmin, loading } = useAdmin();
 
   useEffect(() => {
     return subscribeToFootballMatch(matchId, setMatch);
@@ -121,6 +123,16 @@ export default function FootballScorePage({
       </AppShell>
     );
   }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-inverse-surface">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) return null;
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-variant">

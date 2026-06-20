@@ -157,7 +157,7 @@ export default function SignupPage() {
       };
 
       await registerProUser(proData);
-      router.push("/dashboard");
+      router.push("/");
     } catch (err: any) {
       setError(err.message);
     } finally {

@@ -140,7 +140,7 @@ export default function DashboardPage() {
       .sort(([, a], [, b]) => b.createdAt - a.createdAt);
   }, [tournaments, user, isAdmin]);
 
-  if (isRoleLoaded && user && !isAdmin) {
+  if (isRoleLoaded && !isAdmin) {
     return (
       <AppShell>
         <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center space-y-4">

@@ -1,7 +1,22 @@
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
+import { useAdmin } from "@/hooks/useAdmin";
 
 export default function DashboardSelectionPage() {
+  const { isAdmin, loading } = useAdmin();
+
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="flex h-screen items-center justify-center">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!isAdmin) return null;
+
   return (
     <AppShell>
       <div className="mx-auto max-w-4xl px-4 py-16 text-center">

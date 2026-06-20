@@ -170,33 +170,33 @@ export default function FootballScorePage({
           <div className="bg-surface rounded-2xl shadow-xl border border-outline overflow-hidden flex flex-col">
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 text-white flex flex-col items-center">
               <h2 className="text-sm font-bold tracking-[0.2em] text-on-surface-variant uppercase mb-6">Full Time</h2>
-              <div className="flex items-center justify-center gap-8 w-full">
+              <div className="flex items-center justify-center gap-3 sm:gap-8 w-full">
                 <div className="flex flex-col items-center flex-1">
                   {match.meta.team1Logo ? (
-                    <img src={match.meta.team1Logo} alt={match.meta.team1} className="w-24 h-24 rounded-full border-4 shadow-lg mb-3 object-cover bg-surface" style={{ borderColor: match.meta.team1Color }} />
+                    <img src={match.meta.team1Logo} alt={match.meta.team1} className="w-16 h-16 sm:w-24 sm:h-24 rounded-full border-2 sm:border-4 shadow-lg mb-2 sm:mb-3 object-cover bg-surface" style={{ borderColor: match.meta.team1Color }} />
                   ) : (
-                    <div className="w-24 h-24 rounded-full shadow-lg mb-3 flex items-center justify-center text-white font-black text-3xl" style={{ backgroundColor: match.meta.team1Color || "#1e40af" }}>
+                    <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full shadow-lg mb-2 sm:mb-3 flex items-center justify-center text-white font-black text-xl sm:text-3xl" style={{ backgroundColor: match.meta.team1Color || "#1e40af" }}>
                       {match.meta.team1.substring(0, 3).toUpperCase()}
                     </div>
                   )}
-                  <h3 className="font-black text-xl text-center">{match.meta.team1}</h3>
+                  <h3 className="font-black text-xs sm:text-xl text-center">{match.meta.team1}</h3>
                 </div>
                 
-                <div className="text-7xl font-black tabular-nums tracking-tighter shrink-0 flex items-center justify-center gap-4">
+                <div className="text-4xl sm:text-7xl font-black tabular-nums tracking-tighter shrink-0 flex items-center justify-center gap-2 sm:gap-4">
                   <span>{match.score.team1}</span>
-                  <span className="text-on-surface-variant text-5xl">-</span>
+                  <span className="text-on-surface-variant text-2xl sm:text-5xl">-</span>
                   <span>{match.score.team2}</span>
                 </div>
 
                 <div className="flex flex-col items-center flex-1">
                   {match.meta.team2Logo ? (
-                    <img src={match.meta.team2Logo} alt={match.meta.team2} className="w-24 h-24 rounded-full border-4 shadow-lg mb-3 object-cover bg-surface" style={{ borderColor: match.meta.team2Color }} />
+                    <img src={match.meta.team2Logo} alt={match.meta.team2} className="w-16 h-16 sm:w-24 sm:h-24 rounded-full border-2 sm:border-4 shadow-lg mb-2 sm:mb-3 object-cover bg-surface" style={{ borderColor: match.meta.team2Color }} />
                   ) : (
-                    <div className="w-24 h-24 rounded-full shadow-lg mb-3 flex items-center justify-center text-white font-black text-3xl" style={{ backgroundColor: match.meta.team2Color || "#e11d48" }}>
+                    <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full shadow-lg mb-2 sm:mb-3 flex items-center justify-center text-white font-black text-xl sm:text-3xl" style={{ backgroundColor: match.meta.team2Color || "#e11d48" }}>
                       {match.meta.team2.substring(0, 3).toUpperCase()}
                     </div>
                   )}
-                  <h3 className="font-black text-xl text-center">{match.meta.team2}</h3>
+                  <h3 className="font-black text-xs sm:text-xl text-center">{match.meta.team2}</h3>
                 </div>
               </div>
             </div>

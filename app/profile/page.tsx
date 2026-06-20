@@ -230,9 +230,9 @@ export default function ProfilePage() {
           onCancel={() => setRawPhotoUrl(null)}
         />
       )}
-      <div className="mx-auto max-w-4xl px-4 py-12">
-        <div className="mb-8 flex items-center justify-between">
-          <h1 className="text-3xl font-black text-on-background">My Profile</h1>
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full">
+        <div className="mb-6 sm:mb-8 flex items-center justify-between">
+          <h1 className="text-2xl sm:text-3xl font-black text-on-background">My Profile</h1>
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 rounded-md border border-outline px-4 py-2 font-bold text-on-background hover:bg-surface-variant transition-colors"
@@ -241,7 +241,7 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        <div className="rounded-xl border border-outline bg-surface p-6 shadow-sm">
+        <div className="rounded-2xl sm:rounded-3xl border border-outline bg-surface p-4 sm:p-6 md:p-8 shadow-sm">
           <div className="mb-8 flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
             <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-variant text-3xl font-black text-on-surface border-4 border-surface shadow-sm group">
               {photoPreview || user?.photoURL ? (

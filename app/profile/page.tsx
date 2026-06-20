@@ -68,7 +68,6 @@ export default function ProfilePage() {
         gamePlayed,
         primaryRole,
         bio,
-        dob,
       });
       setMessage("Profile updated successfully!");
     } catch (err: any) {
@@ -95,7 +94,7 @@ export default function ProfilePage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-2xl px-4 py-12">
+      <div className="mx-auto max-w-4xl px-4 py-12">
         <div className="mb-8 flex items-center justify-between">
           <h1 className="text-3xl font-black text-on-background">My Profile</h1>
           <button
@@ -130,9 +129,12 @@ export default function ProfilePage() {
 
           <form
             onSubmit={handleSave}
-            className="space-y-4 border-t border-outline-variant pt-6"
+            className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-outline-variant pt-6"
           >
-            <h3 className="text-lg font-black text-on-surface">Edit Details</h3>
+            <div className="md:col-span-2">
+              <h3 className="text-lg font-black text-on-surface">Edit Details</h3>
+            </div>
+            
             <div>
               <label className="mb-1 block text-sm font-bold text-on-surface">
                 Display Name
@@ -142,7 +144,7 @@ export default function ProfilePage() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full max-w-md rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
               />
             </div>
 
@@ -154,19 +156,19 @@ export default function ProfilePage() {
                 disabled
                 type="text"
                 value={phone ? `+91 ${phone}` : ""}
-                className="w-full max-w-md rounded-md border border-outline bg-surface-variant text-on-surface-variant px-3 py-2 outline-none opacity-70 cursor-not-allowed"
+                className="w-full rounded-md border border-outline bg-surface-variant text-on-surface-variant px-3 py-2 outline-none opacity-70 cursor-not-allowed"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-bold text-on-surface">
-                Date of Birth
+              <label className="mb-1 block text-sm font-bold text-on-surface opacity-70">
+                Date of Birth (Cannot be changed)
               </label>
               <input
+                disabled
                 type="date"
                 value={dob}
-                onChange={(e) => setDob(e.target.value)}
-                className="w-full max-w-md rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary uppercase"
+                className="w-full rounded-md border border-outline bg-surface-variant text-on-surface-variant px-3 py-2 outline-none uppercase opacity-70 cursor-not-allowed"
               />
             </div>
 
@@ -177,7 +179,7 @@ export default function ProfilePage() {
               <select
                 value={primaryRole}
                 onChange={(e) => setPrimaryRole(e.target.value)}
-                className="w-full max-w-md rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
               >
                 <option value="">Select Role</option>
                 <option value="Player">Player</option>
@@ -193,7 +195,7 @@ export default function ProfilePage() {
               <select
                 value={gamePlayed}
                 onChange={(e) => setGamePlayed(e.target.value)}
-                className="w-full max-w-md rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
               >
                 <option value="">Select Sport</option>
                 <option value="Cricket">Cricket</option>
@@ -201,7 +203,7 @@ export default function ProfilePage() {
               </select>
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="mb-1 block text-sm font-bold text-on-surface">
                 Bio
               </label>
@@ -209,26 +211,28 @@ export default function ProfilePage() {
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 rows={4}
-                className="w-full max-w-md rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-y"
               />
             </div>
 
-            {message && (
-              <p
-                className={`text-sm font-bold ${message.startsWith("Error") ? "text-red-500" : "text-emerald-500"}`}
-              >
-                {message}
-              </p>
-            )}
+            <div className="md:col-span-2 space-y-4">
+              {message && (
+                <p
+                  className={`text-sm font-bold ${message.startsWith("Error") ? "text-red-500" : "text-emerald-500"}`}
+                >
+                  {message}
+                </p>
+              )}
 
-            <button
-              type="submit"
-              disabled={saving || !name.trim()}
-              className="flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 font-black text-on-primary hover:bg-primary-container transition-colors disabled:opacity-50"
-            >
-              <Save size={16} />
-              {saving ? "Saving..." : "Save Changes"}
-            </button>
+              <button
+                type="submit"
+                disabled={saving || !name.trim()}
+                className="flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 font-black text-on-primary hover:bg-primary-container transition-colors disabled:opacity-50"
+              >
+                <Save size={16} />
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
           </form>
         </div>
       </div>

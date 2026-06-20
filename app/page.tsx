@@ -100,11 +100,11 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
-            {/* Club Management (Span 2) */}
+            {/* Team Management (Span 2) */}
             <div className="md:col-span-2 relative h-[400px] bg-inverse-surface overflow-hidden group">
               <img 
                 src="https://images.unsplash.com/photo-1579952363873-27f3bade9f55?q=80&w=800" 
-                alt="Club" 
+                alt="Team" 
                 className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500 grayscale"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-inverse-surface to-transparent opacity-80"></div>
@@ -114,13 +114,13 @@ export default function HomePage() {
                   <Users size={24} strokeWidth={2.5}/>
                 </div>
                 <h3 className="font-display text-3xl font-black text-on-primary uppercase tracking-tight mb-3">
-                  Club Management
+                  Team Management
                 </h3>
                 <p className="text-inverse-on-surface opacity-80 max-w-md mb-8">
                   Take total control of your roster. Streamline day-to-day operations, track critical finances, and coordinate match schedules with uncompromising precision.
                 </p>
                 <Link href="#" className="text-primary font-bold uppercase tracking-widest text-xs flex items-center gap-2 hover:text-primary-container">
-                  Manage Club <ArrowRight size={14} strokeWidth={3}/>
+                  Manage Team <ArrowRight size={14} strokeWidth={3}/>
                 </Link>
               </div>
             </div>

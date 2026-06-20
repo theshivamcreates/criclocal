@@ -6,8 +6,9 @@ import { onAuthStateChanged, updateProfile, type User } from "firebase/auth";
 import { ref, get, update } from "firebase/database";
 import { AppShell } from "@/components/AppShell";
 import { useRouter } from "next/navigation";
-import { logout } from "@/lib/firebaseAuth";
-import { LogOut, Save } from "lucide-react";
+import { LogOut, Save, Camera } from "lucide-react";
+import imageCompression from "browser-image-compression";
+import { uploadToImageKit } from "@/lib/imagekitUpload";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -19,6 +20,8 @@ export default function ProfilePage() {
   const [primaryRole, setPrimaryRole] = useState("");
   const [bio, setBio] = useState("");
   const [dob, setDob] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -54,14 +57,39 @@ export default function ProfilePage() {
     return unsub;
   }, [router]);
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1024,
+        useWebWorker: true,
+      };
+      const compressedFile = await imageCompression(file, options);
+      setPhotoFile(compressedFile);
+      setPhotoPreview(URL.createObjectURL(compressedFile));
+    } catch (err) {
+      console.error(err);
+      setMessage("Failed to compress image.");
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !db) return;
     setSaving(true);
     setMessage("");
     try {
+      let finalPhotoUrl = user.photoURL;
+
+      if (photoFile) {
+        finalPhotoUrl = await uploadToImageKit(photoFile, `profile_${name}_${Date.now()}.jpg`);
+      }
+
       // Update Firebase Auth
-      await updateProfile(user, { displayName: name });
+      await updateProfile(user, { displayName: name, photoURL: finalPhotoUrl });
       // Update Realtime DB
       await update(ref(db, `users/${user.uid}`), { 
         name,
@@ -107,16 +135,28 @@ export default function ProfilePage() {
 
         <div className="rounded-xl border border-outline bg-surface p-6 shadow-sm">
           <div className="mb-8 flex items-center gap-6">
-            <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-surface-variant text-3xl font-black text-on-surface border-4 border-surface shadow-sm">
-              {user?.photoURL ? (
+            <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-surface-variant text-3xl font-black text-on-surface border-4 border-surface shadow-sm group">
+              {photoPreview || user?.photoURL ? (
                 <img
-                  src={user.photoURL}
+                  src={photoPreview || user?.photoURL || ""}
                   alt="Profile"
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover transition-opacity group-hover:opacity-50"
                 />
               ) : (
-                name.substring(0, 2).toUpperCase()
+                <span className="transition-opacity group-hover:opacity-50">
+                  {name.substring(0, 2).toUpperCase()}
+                </span>
               )}
+              
+              <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                <Camera className="text-white" size={24} />
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={handlePhotoUpload}
+                />
+              </label>
             </div>
             <div>
               <h2 className="text-2xl font-black text-on-surface">{name || "User"}</h2>

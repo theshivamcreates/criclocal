@@ -8,6 +8,7 @@ import imageCompression from "browser-image-compression";
 import { ArrowRight, ArrowLeft, Camera, UploadCloud, Trophy, Users, Shield } from "lucide-react";
 import { FirebaseNotice } from "@/components/FirebaseNotice";
 import { AppShell } from "@/components/AppShell";
+import { uploadToImageKit } from "@/lib/imagekitUpload";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -92,15 +93,18 @@ export default function SignupPage() {
     setError("");
 
     try {
-      // TODO: Replace with actual ImageKit upload logic
-      // const formData = new FormData();
-      // formData.append("file", photoFile);
-      // formData.append("fileName", photoFile.name);
-      // const res = await fetch("YOUR_IMAGEKIT_ENDPOINT", { method: "POST", body: formData });
-      // const data = await res.json();
-      // const uploadedUrl = data.url;
+      let uploadedUrl = photoPreview || "";
 
-      const uploadedUrl = photoPreview || ""; // Placeholder since ImageKit isn't configured yet
+      // Only upload if it's a real file (not the dummy initial state)
+      if (photoFile) {
+        try {
+          uploadedUrl = await uploadToImageKit(photoFile, `profile_${formData.firstName}_${Date.now()}.jpg`);
+        } catch (uploadErr: any) {
+          setError(`Image Upload Failed: ${uploadErr.message}`);
+          setLoading(false);
+          return;
+        }
+      }
 
       const proData: ProUserRegistrationData = {
         email: formData.email,

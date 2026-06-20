@@ -163,7 +163,7 @@ export default function PlayersPage() {
         </div>
       </div>
 
-      <div className="max-w-[1280px] mx-auto px-6 py-12">
+      <div className="max-w-[1280px] w-full mx-auto px-6 py-12">
         {displayedPlayers.length === 0 ? (
           <div className="text-center py-20">
             <Users size={64} className="mx-auto text-outline mb-6" />

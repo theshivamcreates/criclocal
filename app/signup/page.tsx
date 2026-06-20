@@ -103,6 +103,7 @@ export default function SignupPage() {
       const compressedFile = await imageCompression(croppedFile, options);
       setPhotoFile(compressedFile);
       setPhotoPreview(URL.createObjectURL(compressedFile));
+      if (error === "Profile photo is required.") setError("");
     } catch (err) {
       console.error(err);
       setError("Failed to compress image.");

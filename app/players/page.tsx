@@ -29,6 +29,7 @@ export default function PlayersPage() {
 
     const fetchPlayers = async (sportsFilter: string[] = []) => {
       try {
+        if (!firestore) return;
         const usersSnap = await getDocs(collection(firestore, "users"));
         const usersList: Player[] = [];
         usersSnap.forEach((docSnap) => {
@@ -60,6 +61,7 @@ export default function PlayersPage() {
       if (user) {
         // Fetch current user's document to get their selected sports
         try {
+          if (!firestore) return;
           const userDoc = await getDoc(doc(firestore, `users/${user.uid}`));
           if (userDoc.exists()) {
             const data = userDoc.data();

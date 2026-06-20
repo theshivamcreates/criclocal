@@ -62,6 +62,7 @@ export async function checkUsernameUnique(username: string): Promise<boolean> {
 
 export async function registerProUser(data: ProUserRegistrationData) {
   if (!auth) throw new Error("Auth not configured");
+  if (!firestore) throw new Error("Firestore not configured");
   
   // Validate username uniqueness one last time
   if (!data.username) throw new Error("Username required");

@@ -116,7 +116,7 @@ export default function ProfilePage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !db) return;
+    if (!user || !firestore) return;
     setSaving(true);
     setMessage("");
     try {

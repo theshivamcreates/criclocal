@@ -357,6 +357,7 @@ export default function PlayersPage() {
             </div>
           </div>
         </div>
+        </div>
       )}
     </AppShell>
   );

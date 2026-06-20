@@ -32,6 +32,7 @@ export default function PlayersPage() {
   const [loading, setLoading] = useState(true);
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentUserSports, setCurrentUserSports] = useState<string[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showAllSports, setShowAllSports] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
@@ -72,6 +73,7 @@ export default function PlayersPage() {
 
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        setCurrentUserId(user.uid);
         try {
           if (!firestore) return;
           const userDoc = await getDoc(doc(firestore, `users/${user.uid}`));
@@ -108,8 +110,12 @@ export default function PlayersPage() {
       );
     }
     
-    return filtered;
-  }, [players, searchQuery, currentUserSports, showAllSports]);
+    return filtered.sort((a, b) => {
+      if (a.id === currentUserId) return -1;
+      if (b.id === currentUserId) return 1;
+      return 0;
+    });
+  }, [players, searchQuery, currentUserSports, showAllSports, currentUserId]);
 
   if (loading) {
     return (
@@ -245,7 +251,7 @@ export default function PlayersPage() {
       {/* Player Modal */}
       {selectedPlayer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-surface w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative max-h-[90vh]">
+          <div className="bg-surface w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]">
             
             <button 
               onClick={() => setSelectedPlayer(null)}
@@ -254,7 +260,7 @@ export default function PlayersPage() {
               <X size={20} />
             </button>
 
-            <div className="overflow-y-auto h-full w-full relative">
+            <div className="overflow-y-auto w-full relative flex-1">
               {/* Modal Header/Banner */}
               <div className="h-32 bg-surface-dim border-b border-outline relative shrink-0">
                  <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] mix-blend-overlay"></div>

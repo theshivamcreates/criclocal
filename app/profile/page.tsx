@@ -242,8 +242,8 @@ export default function ProfilePage() {
         </div>
 
         <div className="rounded-xl border border-outline bg-surface p-6 shadow-sm">
-          <div className="mb-8 flex items-center gap-6">
-            <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-surface-variant text-3xl font-black text-on-surface border-4 border-surface shadow-sm group">
+          <div className="mb-8 flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
+            <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-variant text-3xl font-black text-on-surface border-4 border-surface shadow-sm group">
               {photoPreview || user?.photoURL ? (
                 <img
                   src={photoPreview || user?.photoURL || ""}
@@ -266,10 +266,10 @@ export default function ProfilePage() {
                 />
               </label>
             </div>
-            <div>
-              <h2 className="text-2xl font-black text-on-surface">{name || "User"}</h2>
-              <p className="text-on-surface-variant">{user?.email}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="w-full sm:w-auto overflow-hidden">
+              <h2 className="text-2xl font-black text-on-surface truncate">{name || "User"}</h2>
+              <p className="text-on-surface-variant truncate">{user?.email}</p>
+              <div className="mt-3 flex flex-wrap items-center justify-center sm:justify-start gap-2">
                 <div className="inline-flex items-center rounded-full bg-surface-variant px-3 py-1 text-xs font-black uppercase tracking-wider text-primary">
                   {role} ROLE
                 </div>

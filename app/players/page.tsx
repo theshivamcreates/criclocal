@@ -149,6 +149,7 @@ export default function PlayersPage() {
                   {/* Profile Photo */}
                   <div className="absolute -top-12 left-8">
                     {player.photoURL ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={player.photoURL} alt={player.name} className="w-24 h-24 rounded-full border-[6px] border-surface object-cover bg-surface-dim shadow-md group-hover:scale-105 transition-transform duration-300" />
                     ) : (
                       <div className="w-24 h-24 rounded-full border-[6px] border-surface bg-primary flex items-center justify-center text-white font-black text-4xl shadow-md group-hover:scale-105 transition-transform duration-300">
@@ -178,7 +179,7 @@ export default function PlayersPage() {
 
                     {player.bio && (
                       <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-3 mb-6 italic border-l-[3px] border-primary/30 pl-4 py-1">
-                        "{player.bio}"
+                        &quot;{player.bio}&quot;
                       </p>
                     )}
                   </div>

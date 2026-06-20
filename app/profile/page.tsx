@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { auth, firestore } from "@/lib/firebase";
 import { onAuthStateChanged, updateProfile, type User } from "firebase/auth";
 import { doc, getDoc, updateDoc, setDoc, deleteDoc } from "firebase/firestore";
@@ -23,6 +23,11 @@ export default function ProfilePage() {
   const [primaryRole, setPrimaryRole] = useState("");
   const [bio, setBio] = useState("");
   const [dob, setDob] = useState("");
+  const [footballPosition, setFootballPosition] = useState("");
+  const [height, setHeight] = useState("");
+  const [weight, setWeight] = useState("");
+  const [footballSkill, setFootballSkill] = useState("");
+  const [preferredFoot, setPreferredFoot] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [rawPhotoUrl, setRawPhotoUrl] = useState<string | null>(null);
@@ -57,6 +62,11 @@ export default function ProfilePage() {
               setUsername(data.username || "");
               setOriginalUsername(data.username || "");
               setUsernameEdits(data.usernameEdits || []);
+              setFootballPosition(data.footballPosition || "");
+              setHeight(data.height || "");
+              setWeight(data.weight || "");
+              setFootballSkill(data.footballSkill || "");
+              setPreferredFoot(data.preferredFoot || "");
             }
           } catch (err) {
             console.warn("Could not fetch user profile details.");
@@ -92,6 +102,18 @@ export default function ProfilePage() {
   const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000;
   const recentEdits = usernameEdits.filter(time => Date.now() - time < FOURTEEN_DAYS);
   const canEditUsername = recentEdits.length < 2;
+
+  const calculatedAge = useMemo(() => {
+    if (!dob) return "";
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age.toString();
+  }, [dob]);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -162,6 +184,11 @@ export default function ProfilePage() {
         gamePlayed,
         primaryRole,
         bio,
+        footballPosition,
+        height,
+        weight,
+        footballSkill,
+        preferredFoot,
         photoURL: finalPhotoUrl,
         ...(username !== originalUsername ? { username: username.toLowerCase(), usernameEdits: finalUsernameEdits } : {})
       });
@@ -341,6 +368,112 @@ export default function ProfilePage() {
                 className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-y"
               />
             </div>
+
+            {gamePlayed.includes("Football") && (
+              <>
+                <div className="md:col-span-2 mt-4 pt-6 border-t border-outline-variant">
+                  <h3 className="text-lg font-black text-on-surface">Football Attributes</h3>
+                </div>
+                
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-on-surface opacity-70">
+                    Age (Years)
+                  </label>
+                  <input
+                    disabled
+                    type="text"
+                    value={calculatedAge}
+                    className="w-full rounded-md border border-outline bg-surface-variant text-on-surface-variant px-3 py-2 outline-none opacity-70 cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-on-surface">
+                    Preferred Position
+                  </label>
+                  <select
+                    value={footballPosition}
+                    onChange={(e) => setFootballPosition(e.target.value)}
+                    className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Select Position</option>
+                    <option value="GK">Goalkeeper (GK)</option>
+                    <option value="CB">Center Back (CB)</option>
+                    <option value="LB">Left Back (LB)</option>
+                    <option value="RB">Right Back (RB)</option>
+                    <option value="CDM">Defensive Midfielder (CDM)</option>
+                    <option value="CM">Central Midfielder (CM)</option>
+                    <option value="CAM">Attacking Midfielder (CAM)</option>
+                    <option value="LM">Left Midfielder (LM)</option>
+                    <option value="RM">Right Midfielder (RM)</option>
+                    <option value="LW">Left Winger (LW)</option>
+                    <option value="RW">Right Winger (RW)</option>
+                    <option value="ST">Striker (ST)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-on-surface">
+                    Height (cm)
+                  </label>
+                  <input
+                    type="number"
+                    value={height}
+                    onChange={(e) => setHeight(e.target.value)}
+                    placeholder="e.g. 180"
+                    className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-on-surface">
+                    Weight (kg)
+                  </label>
+                  <input
+                    type="number"
+                    value={weight}
+                    onChange={(e) => setWeight(e.target.value)}
+                    placeholder="e.g. 75"
+                    className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-on-surface">
+                    Preferred Foot
+                  </label>
+                  <select
+                    value={preferredFoot}
+                    onChange={(e) => setPreferredFoot(e.target.value)}
+                    className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Select Foot</option>
+                    <option value="Right">Right</option>
+                    <option value="Left">Left</option>
+                    <option value="Both">Both</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-on-surface">
+                    Skill Level
+                  </label>
+                  <select
+                    value={footballSkill}
+                    onChange={(e) => setFootballSkill(e.target.value)}
+                    className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Select Skill Level</option>
+                    <option value="Beginner">Beginner</option>
+                    <option value="Amateur">Amateur</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
+                    <option value="Semi-Pro">Semi-Pro</option>
+                    <option value="Professional">Professional</option>
+                  </select>
+                </div>
+              </>
+            )}
 
             <div className="md:col-span-2 space-y-4">
               {message && (

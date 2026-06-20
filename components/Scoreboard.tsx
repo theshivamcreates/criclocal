@@ -78,7 +78,7 @@ export function Scoreboard({
         }
       >
         {!compact ? (
-          <div className="grid grid-cols-[1fr_3rem_3rem_3rem_3rem] gap-2 border-b border-slate-100 py-2 text-xs font-black uppercase text-slate-500">
+          <div className="grid grid-cols-[1fr_2rem_2rem_2rem_2rem] sm:grid-cols-[1fr_3rem_3rem_3rem_3rem] gap-1 sm:gap-2 border-b border-slate-100 py-2 text-[10px] sm:text-xs font-black uppercase text-slate-500">
             <span>Batter</span>
             <span className="text-right">R</span>
             <span className="text-right">B</span>
@@ -93,7 +93,7 @@ export function Scoreboard({
 
       {!compact && bowler ? (
         <div className="mt-4 rounded-lg border border-slate-100 px-3">
-          <div className="grid grid-cols-[1fr_3rem_3rem_3rem_3rem] gap-2 border-b border-slate-100 py-2 text-xs font-black uppercase text-slate-500">
+          <div className="grid grid-cols-[1fr_2rem_2rem_2rem_2rem] sm:grid-cols-[1fr_3rem_3rem_3rem_3rem] gap-1 sm:gap-2 border-b border-slate-100 py-2 text-[10px] sm:text-xs font-black uppercase text-slate-500">
             <span>Bowler</span>
             <span className="text-right">O</span>
             <span className="text-right">R</span>

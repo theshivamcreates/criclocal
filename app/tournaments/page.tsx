@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { AppShell } from "@/components/AppShell";
-import { db } from "@/lib/firebase";
+import { db, auth, firestore } from "@/lib/firebase";
 import { onValue, ref as dbRef } from "firebase/database";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import { Search, Calendar, MapPin, Filter } from "lucide-react";
 import Link from "next/link";
 
@@ -31,6 +33,29 @@ export default function TournamentsPage() {
       unsubCricket();
       unsubFootball();
     };
+  }, []);
+
+  useEffect(() => {
+    if (!auth || !firestore) return;
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const docSnap = await getDoc(doc(firestore, `users/${user.uid}`));
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.gamePlayed && data.gamePlayed.length > 0) {
+              // Only set if we haven't touched the filter yet
+              setFilterSport((prev) => 
+                prev === "ALL SPORTS" ? data.gamePlayed[0].toUpperCase() : prev
+              );
+            }
+          }
+        } catch (err) {
+          console.error("Error fetching user sports:", err);
+        }
+      }
+    });
+    return () => unsubAuth();
   }, []);
 
   const allTournaments = useMemo(() => {

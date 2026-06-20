@@ -14,6 +14,11 @@ export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<"admin" | "user">("user");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [gamePlayed, setGamePlayed] = useState("");
+  const [primaryRole, setPrimaryRole] = useState("");
+  const [bio, setBio] = useState("");
+  const [dob, setDob] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -26,10 +31,18 @@ export default function ProfilePage() {
         setName(u.displayName || "");
         if (db) {
           try {
-            const snap = await get(ref(db, `users/${u.uid}/role`));
-            if (snap.exists()) setRole(snap.val());
+            const snap = await get(ref(db, `users/${u.uid}`));
+            if (snap.exists()) {
+              const data = snap.val();
+              setRole(data.role || "user");
+              setPhone(data.phone || "");
+              setGamePlayed(data.gamePlayed || "");
+              setPrimaryRole(data.primaryRole || "");
+              setBio(data.bio || "");
+              setDob(data.dob || "");
+            }
           } catch (err) {
-            console.warn("Could not fetch user role (rules might not be deployed yet). Defaulting to 'user'.");
+            console.warn("Could not fetch user profile details.");
             setRole("user");
           }
         }
@@ -50,7 +63,13 @@ export default function ProfilePage() {
       // Update Firebase Auth
       await updateProfile(user, { displayName: name });
       // Update Realtime DB
-      await update(ref(db, `users/${user.uid}`), { name });
+      await update(ref(db, `users/${user.uid}`), { 
+        name,
+        gamePlayed,
+        primaryRole,
+        bio,
+        dob,
+      });
       setMessage("Profile updated successfully!");
     } catch (err: any) {
       setMessage(`Error: ${err.message}`);
@@ -127,6 +146,73 @@ export default function ProfilePage() {
               />
             </div>
 
+            <div>
+              <label className="mb-1 block text-sm font-bold text-on-surface opacity-70">
+                Phone Number (Cannot be changed)
+              </label>
+              <input
+                disabled
+                type="text"
+                value={phone ? `+91 ${phone}` : ""}
+                className="w-full max-w-md rounded-md border border-outline bg-surface-variant text-on-surface-variant px-3 py-2 outline-none opacity-70 cursor-not-allowed"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-bold text-on-surface">
+                Date of Birth
+              </label>
+              <input
+                type="date"
+                value={dob}
+                onChange={(e) => setDob(e.target.value)}
+                className="w-full max-w-md rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary uppercase"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-bold text-on-surface">
+                Primary Role
+              </label>
+              <select
+                value={primaryRole}
+                onChange={(e) => setPrimaryRole(e.target.value)}
+                className="w-full max-w-md rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              >
+                <option value="">Select Role</option>
+                <option value="Player">Player</option>
+                <option value="Coach">Coach</option>
+                <option value="Sponsor">Sponsor</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-bold text-on-surface">
+                Primary Sport
+              </label>
+              <select
+                value={gamePlayed}
+                onChange={(e) => setGamePlayed(e.target.value)}
+                className="w-full max-w-md rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              >
+                <option value="">Select Sport</option>
+                <option value="Cricket">Cricket</option>
+                <option value="Football">Football</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-bold text-on-surface">
+                Bio
+              </label>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                rows={4}
+                className="w-full max-w-md rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
             {message && (
               <p
                 className={`text-sm font-bold ${message.startsWith("Error") ? "text-red-500" : "text-emerald-500"}`}
@@ -137,7 +223,7 @@ export default function ProfilePage() {
 
             <button
               type="submit"
-              disabled={saving || !name.trim() || name === user?.displayName}
+              disabled={saving || !name.trim()}
               className="flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 font-black text-on-primary hover:bg-primary-container transition-colors disabled:opacity-50"
             >
               <Save size={16} />

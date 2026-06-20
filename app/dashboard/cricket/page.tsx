@@ -45,7 +45,9 @@ export default function DashboardPage() {
   const [tournaments, setTournaments] = useState<Record<string, any>>({});
   const [form, setForm] = useState<{
     team1: string;
+    team1Short: string;
     team2: string;
+    team2Short: string;
     overs: number;
     toss: string;
     elected: string;
@@ -55,7 +57,9 @@ export default function DashboardPage() {
     team2Roster: Player[];
   }>({
     team1: "Mumbai Indians",
+    team1Short: "MI",
     team2: "Chennai Super Kings",
+    team2Short: "CSK",
     overs: 20,
     toss: "team1",
     elected: "bat",
@@ -255,6 +259,9 @@ export default function DashboardPage() {
         form.team2Color,
       );
 
+      if (form.team1Short) match.meta.team1Short = form.team1Short;
+      if (form.team2Short) match.meta.team2Short = form.team2Short;
+
       await saveMatch(matchId, match);
       setMessage(
         `Match created. Open /match/${matchId}/score to start scoring.`,
@@ -331,14 +338,26 @@ export default function DashboardPage() {
                     className="h-8 w-8 cursor-pointer rounded-md border-0 p-0"
                     title="Team 1 Color"
                   />
-                  <input
-                    className="w-full rounded-md border border-outline px-3 py-2 font-bold"
-                    value={form.team1}
-                    onChange={(event) =>
-                      setForm({ ...form, team1: event.target.value })
-                    }
-                    placeholder="Team 1 Name"
-                  />
+                  <div className="flex flex-1 gap-2">
+                    <input
+                      className="w-full rounded-md border border-outline px-3 py-2 font-bold"
+                      value={form.team1}
+                      onChange={(event) =>
+                        setForm({ ...form, team1: event.target.value })
+                      }
+                      placeholder="Team 1 Name"
+                    />
+                    <input
+                      className="w-20 shrink-0 rounded-md border border-outline px-3 py-2 font-bold text-center uppercase"
+                      value={form.team1Short}
+                      onChange={(event) =>
+                        setForm({ ...form, team1Short: event.target.value.substring(0, 3).toUpperCase() })
+                      }
+                      placeholder="SHR"
+                      maxLength={3}
+                      title="3-letter Short Form for Logo"
+                    />
+                  </div>
                 </div>
                 <label className="mb-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-outline bg-surface px-3 py-2 text-sm text-on-surface-variant hover:bg-surface-dim">
                   <Upload size={16} />
@@ -429,14 +448,26 @@ export default function DashboardPage() {
                     className="h-8 w-8 cursor-pointer rounded-md border-0 p-0"
                     title="Team 2 Color"
                   />
-                  <input
-                    className="w-full rounded-md border border-outline px-3 py-2 font-bold"
-                    value={form.team2}
-                    onChange={(event) =>
-                      setForm({ ...form, team2: event.target.value })
-                    }
-                    placeholder="Team 2 Name"
-                  />
+                  <div className="flex flex-1 gap-2">
+                    <input
+                      className="w-full rounded-md border border-outline px-3 py-2 font-bold"
+                      value={form.team2}
+                      onChange={(event) =>
+                        setForm({ ...form, team2: event.target.value })
+                      }
+                      placeholder="Team 2 Name"
+                    />
+                    <input
+                      className="w-20 shrink-0 rounded-md border border-outline px-3 py-2 font-bold text-center uppercase"
+                      value={form.team2Short}
+                      onChange={(event) =>
+                        setForm({ ...form, team2Short: event.target.value.substring(0, 3).toUpperCase() })
+                      }
+                      placeholder="SHR"
+                      maxLength={3}
+                      title="3-letter Short Form for Logo"
+                    />
+                  </div>
                 </div>
                 <label className="mb-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-outline bg-surface px-3 py-2 text-sm text-on-surface-variant hover:bg-surface-dim">
                   <Upload size={16} />

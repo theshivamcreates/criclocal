@@ -15,8 +15,10 @@ export function IPLOverlay({ match }: { match: Match }) {
   // Calculate abbreviations (first 3 letters if no custom abbreviation system is present)
   const battingTeamName = getBattingTeamName(match, innings);
   const bowlingTeamName = getBowlingTeamName(match, innings);
-  const battingAbbr = battingTeamName.substring(0, 3).toUpperCase();
-  const bowlingAbbr = bowlingTeamName.substring(0, 3).toUpperCase();
+  const battingTeamKey = innings.battingTeam; // "team1" | "team2"
+  const bowlingTeamKey = innings.battingTeam === "team1" ? "team2" : "team1";
+  const battingAbbr = (match.meta[`${battingTeamKey}Short`] || battingTeamName.substring(0, 3)).toUpperCase();
+  const bowlingAbbr = (match.meta[`${bowlingTeamKey}Short`] || bowlingTeamName.substring(0, 3)).toUpperCase();
 
   const battingLogo =
     innings.battingTeam === "team1"

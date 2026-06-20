@@ -236,8 +236,6 @@ export default function PlayersPage() {
             ))}
           </div>
         )}
-          </div>
-        )}
       </div>
 
       {/* Player Modal */}

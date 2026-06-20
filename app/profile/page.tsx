@@ -6,7 +6,7 @@ import { onAuthStateChanged, updateProfile, type User } from "firebase/auth";
 import { ref, get, update } from "firebase/database";
 import { AppShell } from "@/components/AppShell";
 import { useRouter } from "next/navigation";
-import { LogOut, Save, Camera } from "lucide-react";
+import { LogOut, Save, Camera, Check } from "lucide-react";
 import imageCompression from "browser-image-compression";
 import { uploadToImageKit } from "@/lib/imagekitUpload";
 import { logout } from "@/lib/firebaseAuth";
@@ -272,7 +272,7 @@ export default function ProfilePage() {
               />
               {!canEditUsername && <p className="text-[10px] text-on-surface-variant mt-1">You have reached the limit of 2 username changes per 14 days.</p>}
               {canEditUsername && usernameStatus === "checking" && <p className="text-[10px] text-on-surface-variant mt-1">Checking availability...</p>}
-              {canEditUsername && usernameStatus === "available" && <p className="text-[10px] text-emerald-500 mt-1">Username is available!</p>}
+              {canEditUsername && usernameStatus === "available" && <p className="text-[10px] text-emerald-500 mt-1 flex items-center gap-1"><Check size={12} /> Username is available!</p>}
               {canEditUsername && usernameStatus === "taken" && <p className="text-[10px] text-red-500 mt-1">Username is already taken.</p>}
             </div>
 

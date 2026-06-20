@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { registerProUser, type ProUserRegistrationData } from "@/lib/firebaseAuth";
 import imageCompression from "browser-image-compression";
-import { ArrowRight, ArrowLeft, Camera, UploadCloud, Trophy, Users, Shield } from "lucide-react";
+import { ArrowRight, ArrowLeft, Camera, UploadCloud, Trophy, Users, Shield, Check } from "lucide-react";
 import { FirebaseNotice } from "@/components/FirebaseNotice";
 import { AppShell } from "@/components/AppShell";
 import { uploadToImageKit } from "@/lib/imagekitUpload";
@@ -425,7 +425,7 @@ export default function SignupPage() {
                     maxLength={20}
                   />
                   {usernameStatus === "checking" && <p className="text-xs text-on-surface-variant mt-1">Checking availability...</p>}
-                  {usernameStatus === "available" && <p className="text-xs text-emerald-500 mt-1">Username is available!</p>}
+                  {usernameStatus === "available" && <p className="text-xs text-emerald-500 mt-1 flex items-center gap-1"><Check size={12} /> Username is available!</p>}
                   {usernameStatus === "taken" && <p className="text-xs text-red-500 mt-1">Username is already taken.</p>}
                 </div>
 

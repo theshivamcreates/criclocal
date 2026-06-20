@@ -175,9 +175,11 @@ export default function PlayersPage() {
                     <h3 className="font-display text-2xl font-black text-on-surface uppercase tracking-tight line-clamp-1 group-hover:text-primary transition-colors">
                       {player.name}
                     </h3>
-                    <p className="text-sm font-bold text-on-surface-variant mb-6">
-                      {player.username ? `@${player.username}` : "Guest User"}
-                    </p>
+                    {player.username && (
+                      <p className="text-sm font-bold text-on-surface-variant mb-6">
+                        @{player.username}
+                      </p>
+                    )}
 
                     {player.bio && (
                       <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-3 mb-6 italic border-l-[3px] border-primary/30 pl-4 py-1">

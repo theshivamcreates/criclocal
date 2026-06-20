@@ -3,33 +3,33 @@
     "matches": {
       ".read": true,
       "$matchId": {
-        ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() == 'admin'"
+        ".write": "auth != null"
       }
     },
     "tournaments": {
       ".read": true,
       "$tournId": {
-        ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() == 'admin'"
+        ".write": "auth != null"
       }
     },
     "football": {
       "matches": {
         ".read": true,
         "$matchId": {
-          ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() == 'admin'"
+          ".write": "auth != null"
         }
       },
       "tournaments": {
         ".read": true,
         "$tournId": {
-          ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() == 'admin'"
+          ".write": "auth != null"
         }
       }
     },
     "users": {
       "$uid": {
-        ".read": "auth != null && (auth.uid == $uid || root.child('users/' + auth.uid + '/role').val() == 'admin')",
-        ".write": "auth != null && auth.uid == $uid && (!data.exists() || !newData.hasChild('role') || newData.child('role').val() == data.child('role').val())"
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
       }
     },
     "usernames": {

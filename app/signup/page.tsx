@@ -9,6 +9,7 @@ import { ArrowRight, ArrowLeft, Camera, UploadCloud, Trophy, Users, Shield } fro
 import { FirebaseNotice } from "@/components/FirebaseNotice";
 import { AppShell } from "@/components/AppShell";
 import { uploadToImageKit } from "@/lib/imagekitUpload";
+import { ProfilePhotoCropper } from "@/components/ProfilePhotoCropper";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -44,6 +45,7 @@ export default function SignupPage() {
   
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [rawPhotoUrl, setRawPhotoUrl] = useState<string | null>(null);
 
   const handleNext = () => {
     setError("");
@@ -62,17 +64,22 @@ export default function SignupPage() {
     }
   };
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const url = URL.createObjectURL(file);
+    setRawPhotoUrl(url);
+  };
 
+  const handleCropComplete = async (croppedFile: File) => {
+    setRawPhotoUrl(null);
     try {
       const options = {
         maxSizeMB: 1,
         maxWidthOrHeight: 1024,
         useWebWorker: true,
       };
-      const compressedFile = await imageCompression(file, options);
+      const compressedFile = await imageCompression(croppedFile, options);
       setPhotoFile(compressedFile);
       setPhotoPreview(URL.createObjectURL(compressedFile));
     } catch (err) {
@@ -130,6 +137,13 @@ export default function SignupPage() {
 
   return (
     <AppShell>
+      {rawPhotoUrl && (
+        <ProfilePhotoCropper
+          imageSrc={rawPhotoUrl}
+          onCropComplete={handleCropComplete}
+          onCancel={() => setRawPhotoUrl(null)}
+        />
+      )}
       <div className="flex-1 bg-inverse-surface flex font-sans text-on-primary min-h-[calc(100vh-4rem)] w-full">
         <FirebaseNotice />
         

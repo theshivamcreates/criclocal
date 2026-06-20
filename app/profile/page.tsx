@@ -10,6 +10,7 @@ import { LogOut, Save, Camera } from "lucide-react";
 import imageCompression from "browser-image-compression";
 import { uploadToImageKit } from "@/lib/imagekitUpload";
 import { logout } from "@/lib/firebaseAuth";
+import { ProfilePhotoCropper } from "@/components/ProfilePhotoCropper";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -23,6 +24,7 @@ export default function ProfilePage() {
   const [dob, setDob] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [rawPhotoUrl, setRawPhotoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -58,17 +60,22 @@ export default function ProfilePage() {
     return unsub;
   }, [router]);
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const url = URL.createObjectURL(file);
+    setRawPhotoUrl(url);
+  };
 
+  const handleCropComplete = async (croppedFile: File) => {
+    setRawPhotoUrl(null);
     try {
       const options = {
         maxSizeMB: 1,
         maxWidthOrHeight: 1024,
         useWebWorker: true,
       };
-      const compressedFile = await imageCompression(file, options);
+      const compressedFile = await imageCompression(croppedFile, options);
       setPhotoFile(compressedFile);
       setPhotoPreview(URL.createObjectURL(compressedFile));
     } catch (err) {
@@ -112,17 +119,18 @@ export default function ProfilePage() {
   };
 
   if (loading) {
-    return (
-      <AppShell>
-        <div className="flex h-64 items-center justify-center font-bold text-on-surface-variant">
-          Loading profile...
-        </div>
-      </AppShell>
-    );
+    return <div className="flex h-screen items-center justify-center bg-background"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
   }
 
   return (
     <AppShell>
+      {rawPhotoUrl && (
+        <ProfilePhotoCropper
+          imageSrc={rawPhotoUrl}
+          onCropComplete={handleCropComplete}
+          onCancel={() => setRawPhotoUrl(null)}
+        />
+      )}
       <div className="mx-auto max-w-4xl px-4 py-12">
         <div className="mb-8 flex items-center justify-between">
           <h1 className="text-3xl font-black text-on-background">My Profile</h1>

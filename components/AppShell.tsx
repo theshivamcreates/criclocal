@@ -6,9 +6,9 @@ import { FirebaseNotice } from "@/components/FirebaseNotice";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
-import { get, ref } from "firebase/database";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, firestore } from "@/lib/firebase";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -20,10 +20,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!auth) return;
     return onAuthStateChanged(auth, async (u) => {
       setUser(u);
-      if (u && db) {
+      if (u && firestore) {
         try {
-          const snap = await get(ref(db, `users/${u.uid}/role`));
-          setIsAdmin(snap.exists() && snap.val() === "admin");
+          const snap = await getDoc(doc(firestore, `users/${u.uid}`));
+          setIsAdmin(snap.exists() && snap.data()?.role === "admin");
         } catch (e) {
           setIsAdmin(false);
         }
@@ -102,12 +102,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
               <ThemeToggle />
 
-              {isAdmin ? (
+              {isAdmin && (
                 <Link href="/dashboard" className="flex items-center gap-2 border-2 border-on-surface px-3 py-1.5 hover:bg-on-surface hover:text-surface transition-colors" title="Admin Dashboard">
                   <ShieldAlert size={16} strokeWidth={2.5} className="text-primary"/>
                   <span className="text-[11px] font-black uppercase tracking-widest hidden sm:block">Admin</span>
                 </Link>
-              ) : user ? (
+              )}
+              
+              {user ? (
                 <Link href="/profile" className="flex items-center justify-center h-8 w-8 bg-surface-variant text-on-surface hover:bg-primary hover:text-on-primary transition-colors border border-on-surface rounded-md">
                    <User size={18} strokeWidth={2.5}/>
                 </Link>
@@ -178,7 +180,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <ThemeToggle />
             </div>
             
-            {isAdmin ? (
+            {isAdmin && (
               <Link 
                 href="/dashboard" 
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -187,7 +189,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <ShieldAlert size={18} className="text-primary"/>
                 <span className="text-sm font-black uppercase tracking-widest">Admin Dashboard</span>
               </Link>
-            ) : user ? (
+            )}
+            
+            {user ? (
               <Link 
                 href="/profile" 
                 onClick={() => setIsMobileMenuOpen(false)}

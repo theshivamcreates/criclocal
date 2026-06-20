@@ -253,28 +253,30 @@ export default function ProfilePage() {
               />
             </div>
 
-            <div>
-              <label className="mb-1 block text-sm font-bold text-on-surface">
-                Username
-              </label>
-              <input
-                disabled={!canEditUsername}
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, "").toLowerCase())}
-                className={`w-full rounded-md border bg-surface-dim text-on-surface px-3 py-2 outline-none transition-colors ${
-                  !canEditUsername ? "opacity-70 cursor-not-allowed border-outline"
-                  : usernameStatus === "taken" ? "border-red-500 focus:border-red-500"
-                  : usernameStatus === "available" ? "border-emerald-500 focus:border-emerald-500"
-                  : "border-outline focus:border-primary focus:ring-1 focus:ring-primary"
-                }`}
-                maxLength={20}
-              />
-              {!canEditUsername && <p className="text-[10px] text-on-surface-variant mt-1">You have reached the limit of 2 username changes per 14 days.</p>}
-              {canEditUsername && usernameStatus === "checking" && <p className="text-[10px] text-on-surface-variant mt-1">Checking availability...</p>}
-              {canEditUsername && usernameStatus === "available" && <p className="text-[10px] text-emerald-500 mt-1 flex items-center gap-1"><Check size={12} /> Username is available!</p>}
-              {canEditUsername && usernameStatus === "taken" && <p className="text-[10px] text-red-500 mt-1">Username is already taken.</p>}
-            </div>
+            {role !== "admin" && (
+              <div>
+                <label className="mb-1 block text-sm font-bold text-on-surface">
+                  Username
+                </label>
+                <input
+                  disabled={!canEditUsername}
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, "").toLowerCase())}
+                  className={`w-full rounded-md border bg-surface-dim text-on-surface px-3 py-2 outline-none transition-colors ${
+                    !canEditUsername ? "opacity-70 cursor-not-allowed border-outline"
+                    : usernameStatus === "taken" ? "border-red-500 focus:border-red-500"
+                    : usernameStatus === "available" ? "border-emerald-500 focus:border-emerald-500"
+                    : "border-outline focus:border-primary focus:ring-1 focus:ring-primary"
+                  }`}
+                  maxLength={20}
+                />
+                {!canEditUsername && <p className="text-[10px] text-on-surface-variant mt-1">You have reached the limit of 2 username changes per 14 days.</p>}
+                {canEditUsername && usernameStatus === "checking" && <p className="text-[10px] text-on-surface-variant mt-1">Checking availability...</p>}
+                {canEditUsername && usernameStatus === "available" && <p className="text-[10px] text-emerald-500 mt-1 flex items-center gap-1"><Check size={12} /> Username is available!</p>}
+                {canEditUsername && usernameStatus === "taken" && <p className="text-[10px] text-red-500 mt-1">Username is already taken.</p>}
+              </div>
+            )}
 
             <div>
               <label className="mb-1 block text-sm font-bold text-on-surface opacity-70">

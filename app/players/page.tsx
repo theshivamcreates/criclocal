@@ -34,7 +34,7 @@ export default function PlayersPage() {
         const usersList: Player[] = [];
         usersSnap.forEach((docSnap) => {
           const data = docSnap.data();
-          if (data.role !== "admin") {
+          if (data.role !== "admin" && data.username) {
             usersList.push({ id: docSnap.id, ...data } as Player);
           }
         });

@@ -23,11 +23,12 @@ export default function PlayersPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentUserSports, setCurrentUserSports] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showAllSports, setShowAllSports] = useState(false);
 
   useEffect(() => {
     if (!firestore || !auth) return;
 
-    const fetchPlayers = async (sportsFilter: string[] = []) => {
+    const fetchPlayers = async () => {
       try {
         if (!firestore) return;
         const usersSnap = await getDocs(collection(firestore, "users"));
@@ -38,18 +39,7 @@ export default function PlayersPage() {
             usersList.push({ id: docSnap.id, ...data } as Player);
           }
         });
-
-        // Filter players if we have sports filter
-        let filteredList = usersList;
-        if (sportsFilter.length > 0) {
-          filteredList = usersList.filter(player => {
-            // Check if there is an intersection between player's sports and current user's sports
-            if (!player.gamePlayed || player.gamePlayed.length === 0) return false;
-            return player.gamePlayed.some(sport => sportsFilter.includes(sport));
-          });
-        }
-        
-        setPlayers(filteredList);
+        setPlayers(usersList);
       } catch (err) {
         console.error("Error fetching players:", err);
       } finally {
@@ -59,37 +49,44 @@ export default function PlayersPage() {
 
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Fetch current user's document to get their selected sports
         try {
           if (!firestore) return;
           const userDoc = await getDoc(doc(firestore, `users/${user.uid}`));
           if (userDoc.exists()) {
             const data = userDoc.data();
-            const sports = data.gamePlayed || [];
-            setCurrentUserSports(sports);
-            fetchPlayers(sports);
-            return;
+            setCurrentUserSports(data.gamePlayed || []);
           }
         } catch (err) {
           console.error("Error fetching user profile:", err);
         }
       }
-      // If not logged in or no sports selected, show all players
-      fetchPlayers([]);
+      fetchPlayers();
     });
 
     return () => unsub();
   }, []);
 
   const displayedPlayers = useMemo(() => {
-    if (!searchQuery) return players;
-    const lowerQuery = searchQuery.toLowerCase();
-    return players.filter(p => 
-      p.name?.toLowerCase().includes(lowerQuery) || 
-      p.username?.toLowerCase().includes(lowerQuery) ||
-      p.gamePlayed?.some(sport => sport.toLowerCase().includes(lowerQuery))
-    );
-  }, [players, searchQuery]);
+    let filtered = players;
+
+    if (!showAllSports && currentUserSports.length > 0) {
+      filtered = filtered.filter(player => {
+        if (!player.gamePlayed || player.gamePlayed.length === 0) return false;
+        return player.gamePlayed.some(sport => currentUserSports.includes(sport));
+      });
+    }
+
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter(p => 
+        p.name?.toLowerCase().includes(lowerQuery) || 
+        p.username?.toLowerCase().includes(lowerQuery) ||
+        p.gamePlayed?.some(sport => sport.toLowerCase().includes(lowerQuery))
+      );
+    }
+    
+    return filtered;
+  }, [players, searchQuery, currentUserSports, showAllSports]);
 
   if (loading) {
     return (
@@ -111,20 +108,33 @@ export default function PlayersPage() {
                 Player Directory
               </h1>
               <p className="text-on-surface-variant font-bold text-lg">
-                {currentUserSports.length > 0 
+                {!showAllSports && currentUserSports.length > 0 
                   ? `Showing players who play: ${currentUserSports.join(", ")}` 
                   : "Showing all registered players on the network."}
               </p>
             </div>
-            <div className="w-full md:w-80 shrink-0 relative">
-              <input 
-                type="text" 
-                placeholder="Search by name, username, or sport..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-surface-dim border border-outline text-on-surface px-12 py-4 outline-none focus:border-primary transition-colors font-bold text-sm"
-              />
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant" size={20} />
+            <div className="w-full md:w-80 shrink-0 relative flex flex-col gap-3">
+              <div className="relative">
+                <input 
+                  type="text" 
+                  placeholder="Search by name, username, or sport..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-surface-dim border border-outline text-on-surface px-12 py-4 outline-none focus:border-primary transition-colors font-bold text-sm"
+                />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant" size={20} />
+              </div>
+              {currentUserSports.length > 0 && (
+                <label className="flex items-center gap-2 text-sm font-bold text-on-surface cursor-pointer select-none">
+                  <input 
+                    type="checkbox" 
+                    checked={showAllSports} 
+                    onChange={(e) => setShowAllSports(e.target.checked)} 
+                    className="accent-primary w-4 h-4 cursor-pointer"
+                  />
+                  Show players from all sports
+                </label>
+              )}
             </div>
           </div>
         </div>

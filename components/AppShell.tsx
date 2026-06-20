@@ -85,7 +85,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </span>
           </Link>
           <nav className="hidden md:flex items-center gap-8 justify-center flex-[2]">
-            {navLinks.map((link) => {
+            {(navLinks as Array<{name: string, href: string, match?: string}>).map((link) => {
               const isActive = link.href === "/" 
                 ? pathname === "/" 
                 : pathname?.startsWith(link.href) || (link.match && pathname?.includes(link.match));

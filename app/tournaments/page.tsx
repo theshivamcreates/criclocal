@@ -40,6 +40,7 @@ export default function TournamentsPage() {
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
+          if (!firestore) return;
           const docSnap = await getDoc(doc(firestore, `users/${user.uid}`));
           if (docSnap.exists()) {
             const data = docSnap.data();

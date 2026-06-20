@@ -114,8 +114,8 @@ export default function ScorerPage() {
 
     void runAction(async () => {
       await updateMatchMeta(matchId, {
-        toss: newToss,
-        elected: newElected,
+        toss: newToss as "team1" | "team2",
+        elected: newElected as "bat" | "field",
       });
       if (match.currentInnings === 1) {
         await updateMatch(matchId, {

@@ -53,7 +53,7 @@ export default function ScoresPage() {
 
   const renderCricketCard = (match: CricketMatch & { id: string }) => {
     return (
-      <Link href={`/match/${match.id}`} key={match.id} className="bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden flex flex-col hover:shadow-md hover:border-primary transition-all group block">
+      <Link href={`/match/${match.id}`} key={match.id} className="bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden flex flex-col hover:shadow-md hover:border-primary transition-all group">
         <div className="bg-surface-dim border-b border-outline px-4 py-2 flex justify-between items-center text-xs font-bold text-on-surface-variant uppercase tracking-widest group-hover:bg-primary/5 transition-colors">
           <span>Cricket</span>
           <span className="flex items-center gap-1"><Calendar size={12}/> Ended</span>
@@ -77,7 +77,7 @@ export default function ScoresPage() {
 
   const renderFootballCard = (match: FootballMatch & { id: string }) => {
     return (
-      <Link href={`/football/match/${match.id}`} key={match.id} className="bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden flex flex-col hover:shadow-md hover:border-primary transition-all group block">
+      <Link href={`/football/match/${match.id}`} key={match.id} className="bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden flex flex-col hover:shadow-md hover:border-primary transition-all group">
         <div className="bg-surface-dim border-b border-outline px-4 py-2 flex justify-between items-center text-xs font-bold text-on-surface-variant uppercase tracking-widest group-hover:bg-primary/5 transition-colors">
           <span>Football</span>
           <span className="flex items-center gap-1"><Calendar size={12}/> Full Time</span>

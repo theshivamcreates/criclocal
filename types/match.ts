@@ -57,6 +57,8 @@ export interface MatchMeta {
  team2Roster?: Player[];
  team1Color?: string;
  team2Color?: string;
+ team1Short?: string;
+ team2Short?: string;
  overs: number;
  toss:"team1" |"team2";
  elected:"bat" |"field";

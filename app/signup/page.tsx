@@ -111,7 +111,10 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (step !== 3) return;
+    if (step !== 3) {
+      handleNext();
+      return;
+    }
     if (!photoFile) {
       setError("Profile photo is required.");
       return;
@@ -447,7 +450,7 @@ export default function SignupPage() {
               {step > 1 ? (
                  <button 
                   type="button"
-                  onClick={() => setStep(step - 1)}
+                  onClick={() => { setError(""); setStep(step - 1); }}
                   className="flex-1 border border-outline hover:bg-surface-variant text-on-surface font-bold uppercase tracking-widest text-xs py-4 flex items-center justify-center gap-2 transition-colors"
                 >
                   <ArrowLeft size={16} /> Back

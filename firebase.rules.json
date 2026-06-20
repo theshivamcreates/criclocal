@@ -31,6 +31,12 @@
         ".read": "auth != null && (auth.uid == $uid || root.child('users/' + auth.uid + '/role').val() == 'admin')",
         ".write": "auth != null && auth.uid == $uid && (!data.exists() || !newData.hasChild('role') || newData.child('role').val() == data.child('role').val())"
       }
+    },
+    "usernames": {
+      ".read": true,
+      "$username": {
+        ".write": "auth != null"
+      }
     }
   }
 }

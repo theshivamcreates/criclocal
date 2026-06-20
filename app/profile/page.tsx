@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { auth, db } from "@/lib/firebase";
+import { auth, firestore } from "@/lib/firebase";
 import { onAuthStateChanged, updateProfile, type User } from "firebase/auth";
-import { ref, get, update } from "firebase/database";
+import { doc, getDoc, updateDoc, setDoc, deleteDoc } from "firebase/firestore";
 import { AppShell } from "@/components/AppShell";
 import { useRouter } from "next/navigation";
 import { LogOut, Save, Camera, Check } from "lucide-react";
@@ -40,11 +40,11 @@ export default function ProfilePage() {
       if (u) {
         setUser(u);
         setName(u.displayName || "");
-        if (db) {
+        if (firestore) {
           try {
-            const snap = await get(ref(db, `users/${u.uid}`));
+            const snap = await getDoc(doc(firestore, `users/${u.uid}`));
             if (snap.exists()) {
-              const data = snap.val();
+              const data = snap.data();
               setRole(data.role || "user");
               setPhone(data.phone || "");
               setGamePlayed(Array.isArray(data.gamePlayed) ? data.gamePlayed : (data.gamePlayed ? [data.gamePlayed] : []));
@@ -145,16 +145,16 @@ export default function ProfilePage() {
       let finalUsernameEdits = usernameEdits;
       if (username !== originalUsername) {
         if (originalUsername) {
-          await set(ref(db, `usernames/${originalUsername.toLowerCase()}`), null);
+          await deleteDoc(doc(firestore, `usernames/${originalUsername.toLowerCase()}`));
         }
-        await set(ref(db, `usernames/${username.toLowerCase()}`), user.uid);
+        await setDoc(doc(firestore, `usernames/${username.toLowerCase()}`), { uid: user.uid });
         finalUsernameEdits = [...recentEdits, Date.now()];
         setOriginalUsername(username);
         setUsernameEdits(finalUsernameEdits);
       }
 
-      // Update Realtime DB
-      await update(ref(db, `users/${user.uid}`), { 
+      // Update Firestore DB
+      await updateDoc(doc(firestore, `users/${user.uid}`), { 
         name,
         gamePlayed,
         primaryRole,

@@ -27,7 +27,8 @@ import {
   Lock,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { auth, db, storage, isFirebaseConfigured } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db, storage, isFirebaseConfigured, firestore } from "@/lib/firebase";
 import { saveMatch } from "@/lib/firebaseMatches";
 import { buildNewMatch } from "@/lib/matchUtils";
 import type { Match, Player } from "@/types/match";
@@ -85,10 +86,10 @@ export default function DashboardPage() {
     if (!auth) return;
     return onAuthStateChanged(auth, async (u) => {
       setUser(u);
-      if (u && db) {
+      if (u && firestore) {
         try {
-          const snap = await get(dbRef(db, `users/${u.uid}/role`));
-          if (snap.exists() && snap.val() === "admin") {
+          const snap = await getDoc(doc(firestore, `users/${u.uid}`));
+          if (snap.exists() && snap.data()?.role === "admin") {
             setIsAdmin(true);
           } else {
             setIsAdmin(false);

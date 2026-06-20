@@ -1,4 +1,4 @@
-import { auth, db } from "./firebase";
+import { auth, db, firestore } from "./firebase";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -9,6 +9,7 @@ import {
   type User,
 } from "firebase/auth";
 import { ref, set, get, child } from "firebase/database";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 export interface UserProfile {
   name: string;
@@ -37,9 +38,8 @@ async function ensureUserDocument(
   referralCode?: string,
   proData?: Omit<ProUserRegistrationData, "email" | "password" | "name" | "referralCode">
 ) {
-  if (!db) return;
-  const userRef = ref(db, `users/${user.uid}`);
-  const snapshot = await get(userRef);
+  if (!firestore) return;
+  const userRef = doc(firestore, `users/${user.uid}`);
 
   const role = referralCode === "KIXXIADMIN" ? "admin" : "user";
   
@@ -50,13 +50,13 @@ async function ensureUserDocument(
     ...(proData || {})
   };
 
-  await set(userRef, dataToSet);
+  await setDoc(userRef, dataToSet);
 }
 
 export async function checkUsernameUnique(username: string): Promise<boolean> {
-  if (!db) return false;
-  const usernameRef = ref(db, `usernames/${username.toLowerCase()}`);
-  const snapshot = await get(usernameRef);
+  if (!firestore) return false;
+  const usernameRef = doc(firestore, `usernames/${username.toLowerCase()}`);
+  const snapshot = await getDoc(usernameRef);
   return !snapshot.exists();
 }
 
@@ -86,9 +86,9 @@ export async function registerProUser(data: ProUserRegistrationData) {
   const { email, password, name, referralCode, ...proData } = data;
   await ensureUserDocument(credential.user, name, referralCode, proData);
   
-  // Claim the username
-  const usernameRef = ref(db, `usernames/${data.username.toLowerCase()}`);
-  await set(usernameRef, credential.user.uid);
+  // Claim the username in Firestore
+  const usernameRef = doc(firestore, `usernames/${data.username.toLowerCase()}`);
+  await setDoc(usernameRef, { uid: credential.user.uid });
   
   return credential.user;
 }

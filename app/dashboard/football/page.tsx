@@ -31,7 +31,8 @@ import {
   Lock,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { auth, db, storage, isFirebaseConfigured } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db, storage, isFirebaseConfigured, firestore } from "@/lib/firebase";
 import { saveFootballMatch } from "@/lib/firebaseFootball";
 import type { FootballMatch, FootballPlayer } from "@/types/football";
 import { v4 as uuidv4 } from "uuid";
@@ -78,10 +79,10 @@ export default function FootballDashboardPage() {
     if (!auth) return;
     return onAuthStateChanged(auth, async (u) => {
       setUser(u);
-      if (u && db) {
+      if (u && firestore) {
         try {
-          const snap = await get(dbRef(db, `users/${u.uid}/role`));
-          if (snap.exists() && snap.val() === "admin") {
+          const snap = await getDoc(doc(firestore, `users/${u.uid}`));
+          if (snap.exists() && snap.data()?.role === "admin") {
             setIsAdmin(true);
           } else {
             setIsAdmin(false);

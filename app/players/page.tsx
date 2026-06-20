@@ -5,7 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { firestore, auth } from "@/lib/firebase";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { Users, Search, Activity, Shield } from "lucide-react";
+import { Users, Search, Activity, Shield, X } from "lucide-react";
 
 interface Player {
   id: string;
@@ -16,6 +16,12 @@ interface Player {
   gamePlayed?: string[];
   bio?: string;
   role?: string;
+  dob?: string;
+  footballPosition?: string;
+  height?: string;
+  weight?: string;
+  footballSkill?: string;
+  preferredFoot?: string;
 }
 
 export default function PlayersPage() {
@@ -24,6 +30,19 @@ export default function PlayersPage() {
   const [currentUserSports, setCurrentUserSports] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showAllSports, setShowAllSports] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+
+  const calculateAge = (dobString?: string) => {
+    if (!dobString) return "N/A";
+    const birthDate = new Date(dobString);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age.toString();
+  };
 
   useEffect(() => {
     if (!firestore || !auth) return;
@@ -150,7 +169,11 @@ export default function PlayersPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {displayedPlayers.map(player => (
-              <div key={player.id} className="bg-surface border border-outline rounded-3xl shadow-sm overflow-hidden flex flex-col hover:shadow-lg hover:-translate-y-1 hover:border-primary transition-all duration-300 group">
+              <div 
+                key={player.id} 
+                onClick={() => setSelectedPlayer(player)}
+                className="bg-surface border border-outline rounded-3xl shadow-sm overflow-hidden flex flex-col hover:shadow-lg hover:-translate-y-1 hover:border-primary transition-all duration-300 group cursor-pointer"
+              >
                 
                 {/* Banner / Header area */}
                 <div className="h-28 bg-surface-dim border-b border-outline relative">
@@ -213,7 +236,128 @@ export default function PlayersPage() {
             ))}
           </div>
         )}
+          </div>
+        )}
       </div>
+
+      {/* Player Modal */}
+      {selectedPlayer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-surface w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]">
+            
+            {/* Modal Header/Banner */}
+            <div className="h-32 bg-surface-dim border-b border-outline relative shrink-0">
+               <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] mix-blend-overlay"></div>
+               <button 
+                 onClick={() => setSelectedPlayer(null)}
+                 className="absolute top-4 right-4 bg-black/50 text-white rounded-full p-2 hover:bg-primary transition-colors z-10"
+               >
+                 <X size={20} />
+               </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="px-8 pb-8 relative overflow-y-auto">
+              {/* Profile Photo */}
+              <div className="absolute -top-16 left-8">
+                {selectedPlayer.photoURL ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={selectedPlayer.photoURL} alt={selectedPlayer.name} className="w-32 h-32 rounded-full border-[6px] border-surface object-cover bg-surface-dim shadow-md" />
+                ) : (
+                  <div className="w-32 h-32 rounded-full border-[6px] border-surface bg-primary flex items-center justify-center text-white font-black text-5xl shadow-md">
+                    {selectedPlayer.name ? selectedPlayer.name.charAt(0).toUpperCase() : "U"}
+                  </div>
+                )}
+              </div>
+
+              {/* Primary Role Badge */}
+              <div className="flex justify-end pt-4 mb-8">
+                 {selectedPlayer.primaryRole && (
+                   <span className="text-xs font-black uppercase tracking-widest bg-inverse-surface text-inverse-on-surface px-4 py-1.5 rounded-full flex items-center gap-1 shadow-sm">
+                      {selectedPlayer.primaryRole === "Coach" ? <Shield size={14} /> : <Activity size={14} />}
+                      {selectedPlayer.primaryRole}
+                   </span>
+                 )}
+              </div>
+
+              {/* Info */}
+              <div className="mt-8">
+                <h3 className="font-display text-4xl font-black text-on-surface uppercase tracking-tight">
+                  {selectedPlayer.name}
+                </h3>
+                {selectedPlayer.username && (
+                  <p className="text-lg font-bold text-on-surface-variant mb-4">
+                    @{selectedPlayer.username}
+                  </p>
+                )}
+                
+                {/* Sports Tags */}
+                {selectedPlayer.gamePlayed && selectedPlayer.gamePlayed.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {selectedPlayer.gamePlayed.map(sport => (
+                      <span key={sport} className="text-xs font-black uppercase tracking-widest text-primary bg-primary/10 px-3 py-1.5 rounded-md border border-primary/20">
+                        {sport}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {selectedPlayer.bio && (
+                  <div className="mb-8">
+                    <h4 className="text-sm font-bold text-on-surface-variant mb-2 uppercase tracking-wider">Bio</h4>
+                    <p className="text-base text-on-surface leading-relaxed italic border-l-[3px] border-primary/30 pl-4 py-1 bg-surface-dim/50 rounded-r-lg">
+                      &quot;{selectedPlayer.bio}&quot;
+                    </p>
+                  </div>
+                )}
+
+                {/* Attributes Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-surface-dim p-4 rounded-xl border border-outline">
+                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Age</p>
+                    <p className="text-lg font-black text-on-surface">{calculateAge(selectedPlayer.dob)}</p>
+                  </div>
+                  
+                  {selectedPlayer.gamePlayed?.includes("Football") && (
+                    <>
+                      {selectedPlayer.footballPosition && (
+                        <div className="bg-surface-dim p-4 rounded-xl border border-outline">
+                          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Position</p>
+                          <p className="text-lg font-black text-on-surface">{selectedPlayer.footballPosition}</p>
+                        </div>
+                      )}
+                      
+                      {(selectedPlayer.height || selectedPlayer.weight) && (
+                        <div className="bg-surface-dim p-4 rounded-xl border border-outline">
+                          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Physical</p>
+                          <p className="text-lg font-black text-on-surface">
+                            {selectedPlayer.height ? `${selectedPlayer.height}cm` : '--'} / {selectedPlayer.weight ? `${selectedPlayer.weight}kg` : '--'}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {selectedPlayer.preferredFoot && (
+                        <div className="bg-surface-dim p-4 rounded-xl border border-outline">
+                          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Foot</p>
+                          <p className="text-lg font-black text-on-surface">{selectedPlayer.preferredFoot}</p>
+                        </div>
+                      )}
+                      
+                      {selectedPlayer.footballSkill && (
+                        <div className="bg-surface-dim p-4 rounded-xl border border-outline">
+                          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Skill</p>
+                          <p className="text-lg font-black text-on-surface">{selectedPlayer.footballSkill}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

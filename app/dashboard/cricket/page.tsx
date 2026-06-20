@@ -697,20 +697,24 @@ export default function DashboardPage() {
                             className="flex items-center gap-1 rounded-md bg-inverse-surface px-3 py-2 text-sm font-black text-white"
                             href={`/match/${id}/score`}
                           >
-                            <Smartphone size={16} /> Score
+                            <Smartphone size={16} /> {match.meta.status === "completed" ? "Edit Stats" : "Score"}
                           </Link>
-                          <Link
-                            className="flex items-center gap-1 rounded-md border border-outline px-3 py-2 text-sm font-black"
-                            href={`/match/${id}/live`}
-                          >
-                            <Eye size={16} /> Live
-                          </Link>
-                          <Link
-                            className="flex items-center gap-1 rounded-md border border-outline px-3 py-2 text-sm font-black"
-                            href={`/match/${id}/overlay`}
-                          >
-                            <MonitorUp size={16} /> Overlay
-                          </Link>
+                          {match.meta.status !== "completed" && (
+                            <>
+                              <Link
+                                className="flex items-center gap-1 rounded-md border border-outline px-3 py-2 text-sm font-black"
+                                href={`/match/${id}/live`}
+                              >
+                                <Eye size={16} /> Live
+                              </Link>
+                              <Link
+                                className="flex items-center gap-1 rounded-md border border-outline px-3 py-2 text-sm font-black"
+                                href={`/match/${id}/overlay`}
+                              >
+                                <MonitorUp size={16} /> Overlay
+                              </Link>
+                            </>
+                          )}
                           <button
                             onClick={() => {
                               if (

@@ -25,6 +25,7 @@ export interface ProUserRegistrationData {
   primaryRole: string;
   gamePlayed: string[];
   bio: string;
+  username: string;
   photoURL: string;
   referralCode?: string;
 }
@@ -52,9 +53,21 @@ async function ensureUserDocument(
   await set(userRef, dataToSet);
 }
 
+export async function checkUsernameUnique(username: string): Promise<boolean> {
+  if (!db) return false;
+  const usernameRef = ref(db, `usernames/${username.toLowerCase()}`);
+  const snapshot = await get(usernameRef);
+  return !snapshot.exists();
+}
+
 export async function registerProUser(data: ProUserRegistrationData) {
   if (!auth) throw new Error("Auth not configured");
   
+  // Validate username uniqueness one last time
+  if (!data.username) throw new Error("Username required");
+  const isUnique = await checkUsernameUnique(data.username);
+  if (!isUnique) throw new Error("Username is already taken");
+
   // Create user
   if (!data.password) throw new Error("Password required for email registration");
   const credential = await createUserWithEmailAndPassword(
@@ -72,6 +85,10 @@ export async function registerProUser(data: ProUserRegistrationData) {
   // Save all fields to RTDB
   const { email, password, name, referralCode, ...proData } = data;
   await ensureUserDocument(credential.user, name, referralCode, proData);
+  
+  // Claim the username
+  const usernameRef = ref(db, `usernames/${data.username.toLowerCase()}`);
+  await set(usernameRef, credential.user.uid);
   
   return credential.user;
 }

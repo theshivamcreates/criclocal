@@ -10,6 +10,7 @@ import { LogOut, Save, Camera } from "lucide-react";
 import imageCompression from "browser-image-compression";
 import { uploadToImageKit } from "@/lib/imagekitUpload";
 import { logout } from "@/lib/firebaseAuth";
+import { checkUsernameUnique } from "@/lib/firebaseAuth";
 import { ProfilePhotoCropper } from "@/components/ProfilePhotoCropper";
 
 export default function ProfilePage() {
@@ -25,6 +26,10 @@ export default function ProfilePage() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [rawPhotoUrl, setRawPhotoUrl] = useState<string | null>(null);
+  const [username, setUsername] = useState("");
+  const [originalUsername, setOriginalUsername] = useState("");
+  const [usernameEdits, setUsernameEdits] = useState<number[]>([]);
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -46,6 +51,9 @@ export default function ProfilePage() {
               setPrimaryRole(data.primaryRole || "");
               setBio(data.bio || "");
               setDob(data.dob || "");
+              setUsername(data.username || "");
+              setOriginalUsername(data.username || "");
+              setUsernameEdits(data.usernameEdits || []);
             }
           } catch (err) {
             console.warn("Could not fetch user profile details.");
@@ -59,6 +67,28 @@ export default function ProfilePage() {
     });
     return unsub;
   }, [router]);
+
+  useEffect(() => {
+    if (username.trim() === "" || username === originalUsername) {
+      setUsernameStatus("idle");
+      return;
+    }
+    const check = async () => {
+      setUsernameStatus("checking");
+      try {
+        const isUnique = await checkUsernameUnique(username.trim());
+        setUsernameStatus(isUnique ? "available" : "taken");
+      } catch {
+        setUsernameStatus("idle");
+      }
+    };
+    const timeout = setTimeout(check, 500);
+    return () => clearTimeout(timeout);
+  }, [username, originalUsername]);
+
+  const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000;
+  const recentEdits = usernameEdits.filter(time => Date.now() - time < FOURTEEN_DAYS);
+  const canEditUsername = recentEdits.length < 2;
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -90,6 +120,19 @@ export default function ProfilePage() {
     setSaving(true);
     setMessage("");
     try {
+      if (username !== originalUsername) {
+        if (!canEditUsername) {
+          setMessage("Error: Username can only be changed twice every 14 days.");
+          setSaving(false);
+          return;
+        }
+        if (usernameStatus === "taken") {
+          setMessage("Error: Please choose an available username.");
+          setSaving(false);
+          return;
+        }
+      }
+
       let finalPhotoUrl = user.photoURL;
 
       if (photoFile) {
@@ -98,12 +141,25 @@ export default function ProfilePage() {
 
       // Update Firebase Auth
       await updateProfile(user, { displayName: name, photoURL: finalPhotoUrl });
+
+      let finalUsernameEdits = usernameEdits;
+      if (username !== originalUsername) {
+        if (originalUsername) {
+          await set(ref(db, `usernames/${originalUsername.toLowerCase()}`), null);
+        }
+        await set(ref(db, `usernames/${username.toLowerCase()}`), user.uid);
+        finalUsernameEdits = [...recentEdits, Date.now()];
+        setOriginalUsername(username);
+        setUsernameEdits(finalUsernameEdits);
+      }
+
       // Update Realtime DB
       await update(ref(db, `users/${user.uid}`), { 
         name,
         gamePlayed,
         primaryRole,
         bio,
+        ...(username !== originalUsername ? { username: username.toLowerCase(), usernameEdits: finalUsernameEdits } : {})
       });
       setMessage("Profile updated successfully!");
     } catch (err: any) {
@@ -195,6 +251,29 @@ export default function ProfilePage() {
                 onChange={(e) => setName(e.target.value)}
                 className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
               />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-bold text-on-surface">
+                Username
+              </label>
+              <input
+                disabled={!canEditUsername}
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, "").toLowerCase())}
+                className={`w-full rounded-md border bg-surface-dim text-on-surface px-3 py-2 outline-none transition-colors ${
+                  !canEditUsername ? "opacity-70 cursor-not-allowed border-outline"
+                  : usernameStatus === "taken" ? "border-red-500 focus:border-red-500"
+                  : usernameStatus === "available" ? "border-emerald-500 focus:border-emerald-500"
+                  : "border-outline focus:border-primary focus:ring-1 focus:ring-primary"
+                }`}
+                maxLength={20}
+              />
+              {!canEditUsername && <p className="text-[10px] text-on-surface-variant mt-1">You have reached the limit of 2 username changes per 14 days.</p>}
+              {canEditUsername && usernameStatus === "checking" && <p className="text-[10px] text-on-surface-variant mt-1">Checking availability...</p>}
+              {canEditUsername && usernameStatus === "available" && <p className="text-[10px] text-emerald-500 mt-1">Username is available!</p>}
+              {canEditUsername && usernameStatus === "taken" && <p className="text-[10px] text-red-500 mt-1">Username is already taken.</p>}
             </div>
 
             <div>

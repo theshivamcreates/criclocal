@@ -11,6 +11,7 @@ import { AppShell } from "@/components/AppShell";
 import { uploadToImageKit } from "@/lib/imagekitUpload";
 import { ProfilePhotoCropper } from "@/components/ProfilePhotoCropper";
 import { auth } from "@/lib/firebase";
+import { checkUsernameUnique } from "@/lib/firebaseAuth";
 import { onAuthStateChanged } from "firebase/auth";
 
 export default function SignupPage() {
@@ -40,12 +41,32 @@ export default function SignupPage() {
     primaryRole: "",
     referralCode: "",
     gamePlayed: [] as string[],
+    username: "",
     bio: "",
   });
   
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [rawPhotoUrl, setRawPhotoUrl] = useState<string | null>(null);
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
+  
+  useEffect(() => {
+    if (formData.username.trim() === "") {
+      setUsernameStatus("idle");
+      return;
+    }
+    const check = async () => {
+      setUsernameStatus("checking");
+      try {
+        const isUnique = await checkUsernameUnique(formData.username.trim());
+        setUsernameStatus(isUnique ? "available" : "taken");
+      } catch {
+        setUsernameStatus("idle");
+      }
+    };
+    const timeout = setTimeout(check, 500);
+    return () => clearTimeout(timeout);
+  }, [formData.username]);
 
   const handleNext = () => {
     setError("");
@@ -95,6 +116,10 @@ export default function SignupPage() {
       setError("Profile photo is required.");
       return;
     }
+    if (!formData.username.trim() || usernameStatus === "taken") {
+      setError("Please choose a valid and available username.");
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -121,6 +146,7 @@ export default function SignupPage() {
         dob: formData.dob,
         primaryRole: formData.primaryRole,
         gamePlayed: formData.gamePlayed,
+        username: formData.username.trim(),
         bio: formData.bio,
         photoURL: uploadedUrl,
         referralCode: formData.referralCode,
@@ -382,6 +408,25 @@ export default function SignupPage() {
                        <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
                     </label>
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black tracking-widest uppercase text-on-surface-variant mb-2">Username</label>
+                  <input 
+                    type="text" 
+                    value={formData.username}
+                    onChange={(e) => setFormData({...formData, username: e.target.value.replace(/[^a-zA-Z0-9_]/g, "").toLowerCase()})}
+                    className={`w-full bg-surface border text-on-surface px-4 py-3 outline-none transition-colors text-sm ${
+                      usernameStatus === "taken" ? "border-red-500 focus:border-red-500" 
+                      : usernameStatus === "available" ? "border-emerald-500 focus:border-emerald-500"
+                      : "border-outline focus:border-primary"
+                    }`}
+                    placeholder="e.g. cr7_official"
+                    maxLength={20}
+                  />
+                  {usernameStatus === "checking" && <p className="text-xs text-on-surface-variant mt-1">Checking availability...</p>}
+                  {usernameStatus === "available" && <p className="text-xs text-emerald-500 mt-1">Username is available!</p>}
+                  {usernameStatus === "taken" && <p className="text-xs text-red-500 mt-1">Username is already taken.</p>}
                 </div>
 
                 <div>

@@ -167,7 +167,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
           </div>
           <div className="flex flex-col gap-4 flex-1">
-            {navLinks.map((link) => {
+            {(navLinks as Array<{name: string, href: string, match?: string}>).map((link) => {
               const isActive = link.href === "/" 
                 ? pathname === "/" 
                 : pathname?.startsWith(link.href) || (link.match && pathname?.includes(link.match));

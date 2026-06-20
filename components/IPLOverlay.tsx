@@ -17,8 +17,8 @@ export function IPLOverlay({ match }: { match: Match }) {
   const bowlingTeamName = getBowlingTeamName(match, innings);
   const battingTeamKey = innings.battingTeam; // "team1" | "team2"
   const bowlingTeamKey = innings.battingTeam === "team1" ? "team2" : "team1";
-  const battingAbbr = (match.meta[`${battingTeamKey}Short` as keyof MatchMeta] as string || battingTeamName.substring(0, 3)).toUpperCase();
-  const bowlingAbbr = (match.meta[`${bowlingTeamKey}Short` as keyof MatchMeta] as string || bowlingTeamName.substring(0, 3)).toUpperCase();
+  const battingAbbr = ((match.meta as any)[`${battingTeamKey}Short`] as string || battingTeamName.substring(0, 3)).toUpperCase();
+  const bowlingAbbr = ((match.meta as any)[`${bowlingTeamKey}Short`] as string || bowlingTeamName.substring(0, 3)).toUpperCase();
 
   const battingLogo =
     innings.battingTeam === "team1"

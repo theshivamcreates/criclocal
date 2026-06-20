@@ -230,8 +230,15 @@ export default function ProfilePage() {
             <div>
               <h2 className="text-2xl font-black text-on-surface">{name || "User"}</h2>
               <p className="text-on-surface-variant">{user?.email}</p>
-              <div className="mt-2 inline-flex items-center rounded-full bg-surface-variant px-3 py-1 text-xs font-black uppercase tracking-wider text-primary">
-                {role} ROLE
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center rounded-full bg-surface-variant px-3 py-1 text-xs font-black uppercase tracking-wider text-primary">
+                  {role} ROLE
+                </div>
+                {gamePlayed.map((sport) => (
+                  <div key={sport} className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-primary border border-primary/20">
+                    {sport}
+                  </div>
+                ))}
               </div>
             </div>
           </div>

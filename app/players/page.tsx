@@ -22,6 +22,10 @@ interface Player {
   weight?: string;
   footballSkill?: string;
   preferredFoot?: string;
+  cricketRole?: string;
+  battingStyle?: string;
+  bowlingStyle?: string;
+  cricketSkill?: string;
 }
 
 export default function PlayersPage() {
@@ -347,6 +351,38 @@ export default function PlayersPage() {
                         <div className="bg-surface-dim p-4 rounded-xl border border-outline">
                           <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Skill</p>
                           <p className="text-lg font-black text-on-surface">{selectedPlayer.footballSkill}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {selectedPlayer.gamePlayed?.includes("Cricket") && (
+                    <>
+                      {selectedPlayer.cricketRole && (
+                        <div className="bg-surface-dim p-4 rounded-xl border border-outline">
+                          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Role</p>
+                          <p className="text-lg font-black text-on-surface">{selectedPlayer.cricketRole}</p>
+                        </div>
+                      )}
+                      
+                      {selectedPlayer.battingStyle && (
+                        <div className="bg-surface-dim p-4 rounded-xl border border-outline">
+                          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Batting</p>
+                          <p className="text-lg font-black text-on-surface">{selectedPlayer.battingStyle}</p>
+                        </div>
+                      )}
+                      
+                      {selectedPlayer.bowlingStyle && (
+                        <div className="bg-surface-dim p-4 rounded-xl border border-outline">
+                          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Bowling</p>
+                          <p className="text-lg font-black text-on-surface">{selectedPlayer.bowlingStyle}</p>
+                        </div>
+                      )}
+                      
+                      {selectedPlayer.cricketSkill && (
+                        <div className="bg-surface-dim p-4 rounded-xl border border-outline">
+                          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Skill</p>
+                          <p className="text-lg font-black text-on-surface">{selectedPlayer.cricketSkill}</p>
                         </div>
                       )}
                     </>

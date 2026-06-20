@@ -28,6 +28,10 @@ export default function ProfilePage() {
   const [weight, setWeight] = useState("");
   const [footballSkill, setFootballSkill] = useState("");
   const [preferredFoot, setPreferredFoot] = useState("");
+  const [cricketRole, setCricketRole] = useState("");
+  const [battingStyle, setBattingStyle] = useState("");
+  const [bowlingStyle, setBowlingStyle] = useState("");
+  const [cricketSkill, setCricketSkill] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [rawPhotoUrl, setRawPhotoUrl] = useState<string | null>(null);
@@ -67,6 +71,10 @@ export default function ProfilePage() {
               setWeight(data.weight || "");
               setFootballSkill(data.footballSkill || "");
               setPreferredFoot(data.preferredFoot || "");
+              setCricketRole(data.cricketRole || "");
+              setBattingStyle(data.battingStyle || "");
+              setBowlingStyle(data.bowlingStyle || "");
+              setCricketSkill(data.cricketSkill || "");
             }
           } catch (err) {
             console.warn("Could not fetch user profile details.");
@@ -189,6 +197,10 @@ export default function ProfilePage() {
         weight,
         footballSkill,
         preferredFoot,
+        cricketRole,
+        battingStyle,
+        bowlingStyle,
+        cricketSkill,
         photoURL: finalPhotoUrl,
         ...(username !== originalUsername ? { username: username.toLowerCase(), usernameEdits: finalUsernameEdits } : {})
       });
@@ -461,6 +473,98 @@ export default function ProfilePage() {
                   <select
                     value={footballSkill}
                     onChange={(e) => setFootballSkill(e.target.value)}
+                    className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Select Skill Level</option>
+                    <option value="Beginner">Beginner</option>
+                    <option value="Amateur">Amateur</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
+                    <option value="Semi-Pro">Semi-Pro</option>
+                    <option value="Professional">Professional</option>
+                  </select>
+                </div>
+              </>
+            )}
+
+            {gamePlayed.includes("Cricket") && (
+              <>
+                <div className="md:col-span-2 mt-4 pt-6 border-t border-outline-variant">
+                  <h3 className="text-lg font-black text-on-surface">Cricket Attributes</h3>
+                </div>
+                
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-on-surface opacity-70">
+                    Age (Years)
+                  </label>
+                  <input
+                    disabled
+                    type="text"
+                    value={calculatedAge}
+                    className="w-full rounded-md border border-outline bg-surface-variant text-on-surface-variant px-3 py-2 outline-none opacity-70 cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-on-surface">
+                    Player Role
+                  </label>
+                  <select
+                    value={cricketRole}
+                    onChange={(e) => setCricketRole(e.target.value)}
+                    className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Select Role</option>
+                    <option value="Batsman">Batsman</option>
+                    <option value="Bowler">Bowler</option>
+                    <option value="All-Rounder">All-Rounder</option>
+                    <option value="Wicket-Keeper">Wicket-Keeper</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-on-surface">
+                    Batting Style
+                  </label>
+                  <select
+                    value={battingStyle}
+                    onChange={(e) => setBattingStyle(e.target.value)}
+                    className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Select Batting Style</option>
+                    <option value="Right-hand bat">Right-hand bat</option>
+                    <option value="Left-hand bat">Left-hand bat</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-on-surface">
+                    Bowling Style
+                  </label>
+                  <select
+                    value={bowlingStyle}
+                    onChange={(e) => setBowlingStyle(e.target.value)}
+                    className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Select Bowling Style</option>
+                    <option value="None">None</option>
+                    <option value="Right-arm Fast">Right-arm Fast</option>
+                    <option value="Right-arm Medium">Right-arm Medium</option>
+                    <option value="Right-arm Off-break">Right-arm Off-break</option>
+                    <option value="Right-arm Leg-break">Right-arm Leg-break</option>
+                    <option value="Left-arm Fast">Left-arm Fast</option>
+                    <option value="Left-arm Orthodox">Left-arm Orthodox</option>
+                    <option value="Left-arm Chinaman">Left-arm Chinaman</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-on-surface">
+                    Skill Level
+                  </label>
+                  <select
+                    value={cricketSkill}
+                    onChange={(e) => setCricketSkill(e.target.value)}
                     className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                   >
                     <option value="">Select Skill Level</option>

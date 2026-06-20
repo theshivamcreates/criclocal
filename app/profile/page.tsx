@@ -17,7 +17,7 @@ export default function ProfilePage() {
   const [role, setRole] = useState<"admin" | "user">("user");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [gamePlayed, setGamePlayed] = useState("");
+  const [gamePlayed, setGamePlayed] = useState<string[]>([]);
   const [primaryRole, setPrimaryRole] = useState("");
   const [bio, setBio] = useState("");
   const [dob, setDob] = useState("");
@@ -40,7 +40,7 @@ export default function ProfilePage() {
               const data = snap.val();
               setRole(data.role || "user");
               setPhone(data.phone || "");
-              setGamePlayed(data.gamePlayed || "");
+              setGamePlayed(Array.isArray(data.gamePlayed) ? data.gamePlayed : (data.gamePlayed ? [data.gamePlayed] : []));
               setPrimaryRole(data.primaryRole || "");
               setBio(data.bio || "");
               setDob(data.dob || "");
@@ -230,18 +230,33 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-bold text-on-surface">
-                Primary Sport
+              <label className="mb-2 block text-sm font-bold text-on-surface">
+                Primary Sports
               </label>
-              <select
-                value={gamePlayed}
-                onChange={(e) => setGamePlayed(e.target.value)}
-                className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              >
-                <option value="">Select Sport</option>
-                <option value="Cricket">Cricket</option>
-                <option value="Football">Football</option>
-              </select>
+              <div className="flex flex-wrap gap-3">
+                {["Cricket", "Football", "Basketball"].map(sport => {
+                  const isSelected = gamePlayed.includes(sport);
+                  return (
+                    <button
+                      key={sport}
+                      type="button"
+                      onClick={() => {
+                        const newSports = isSelected
+                          ? gamePlayed.filter(s => s !== sport)
+                          : [...gamePlayed, sport];
+                        setGamePlayed(newSports);
+                      }}
+                      className={`px-4 py-2 rounded-md border text-sm font-bold transition-colors ${
+                        isSelected 
+                          ? 'border-primary bg-primary/10 text-primary' 
+                          : 'border-outline bg-surface-dim text-on-surface hover:bg-surface-variant'
+                      }`}
+                    >
+                      {sport} {isSelected && "✓"}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="md:col-span-2">

@@ -23,7 +23,7 @@ export interface ProUserRegistrationData {
   phone: string;
   dob: string;
   primaryRole: string;
-  gamePlayed: string;
+  gamePlayed: string[];
   bio: string;
   photoURL: string;
   referralCode?: string;

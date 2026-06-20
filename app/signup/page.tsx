@@ -38,7 +38,7 @@ export default function SignupPage() {
     dob: "",
     primaryRole: "",
     referralCode: "",
-    gamePlayed: "",
+    gamePlayed: [] as string[],
     bio: "",
   });
   
@@ -54,8 +54,8 @@ export default function SignupPage() {
       }
       setStep(2);
     } else if (step === 2) {
-      if (!formData.gamePlayed) {
-        setError("Please select the game you play.");
+      if (!formData.gamePlayed || formData.gamePlayed.length === 0) {
+        setError("Please select at least one sport you play.");
         return;
       }
       setStep(3);
@@ -320,21 +320,29 @@ export default function SignupPage() {
             {step === 2 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                  <div>
-                  <label className="block text-[10px] font-black tracking-widest uppercase text-on-surface-variant mb-3">Select Primary Sport</label>
+                  <label className="block text-[10px] font-black tracking-widest uppercase text-on-surface-variant mb-3">Select Primary Sports</label>
                   <div className="grid grid-cols-1 gap-4">
-                    {["Football", "Basketball", "Cricket"].map(game => (
-                      <button
-                        key={game}
-                        type="button"
-                        onClick={() => setFormData({...formData, gamePlayed: game})}
-                        className={`flex items-center justify-between px-6 py-6 border ${formData.gamePlayed === game ? 'border-primary bg-primary/10 text-primary' : 'border-outline bg-surface text-on-surface-variant hover:bg-surface-variant'} transition-all`}
-                      >
-                        <span className="text-xl font-display font-black uppercase tracking-widest text-on-surface">{game}</span>
-                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${formData.gamePlayed === game ? 'border-primary' : 'border-outline'}`}>
-                          {formData.gamePlayed === game && <div className="w-2 h-2 bg-primary rounded-full"></div>}
-                        </div>
-                      </button>
-                    ))}
+                    {["Football", "Basketball", "Cricket"].map(game => {
+                      const isSelected = formData.gamePlayed.includes(game);
+                      return (
+                        <button
+                          key={game}
+                          type="button"
+                          onClick={() => {
+                            const newGames = isSelected 
+                              ? formData.gamePlayed.filter(g => g !== game)
+                              : [...formData.gamePlayed, game];
+                            setFormData({...formData, gamePlayed: newGames});
+                          }}
+                          className={`flex items-center justify-between px-6 py-6 border ${isSelected ? 'border-primary bg-primary/10 text-primary' : 'border-outline bg-surface text-on-surface-variant hover:bg-surface-variant'} transition-all`}
+                        >
+                          <span className="text-xl font-display font-black uppercase tracking-widest text-on-surface">{game}</span>
+                          <div className={`w-5 h-5 rounded-sm border-2 flex items-center justify-center ${isSelected ? 'border-primary bg-primary text-on-primary' : 'border-outline'}`}>
+                            {isSelected && <span className="text-[12px] font-black leading-none mt-0.5">✓</span>}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

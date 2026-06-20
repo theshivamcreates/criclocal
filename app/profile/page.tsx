@@ -327,7 +327,7 @@ export default function ProfilePage() {
                 Sports
               </label>
               <div className="flex flex-wrap gap-3">
-                {["Cricket", "Football", "Basketball"].map(sport => {
+                {["Cricket", "Football"].map(sport => {
                   const isSelected = gamePlayed.includes(sport);
                   return (
                     <button

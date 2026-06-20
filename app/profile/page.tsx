@@ -322,35 +322,6 @@ export default function ProfilePage() {
               </select>
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-bold text-on-surface">
-                Sports
-              </label>
-              <div className="flex flex-wrap gap-3">
-                {["Cricket", "Football"].map(sport => {
-                  const isSelected = gamePlayed.includes(sport);
-                  return (
-                    <button
-                      key={sport}
-                      type="button"
-                      onClick={() => {
-                        const newSports = isSelected
-                          ? gamePlayed.filter(s => s !== sport)
-                          : [...gamePlayed, sport];
-                        setGamePlayed(newSports);
-                      }}
-                      className={`px-4 py-2 rounded-md border text-sm font-bold transition-colors ${
-                        isSelected 
-                          ? 'border-primary bg-primary/10 text-primary' 
-                          : 'border-outline bg-surface-dim text-on-surface hover:bg-surface-variant'
-                      }`}
-                    >
-                      {sport} {isSelected && "✓"}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
 
             <div className="md:col-span-2">
               <label className="mb-1 block text-sm font-bold text-on-surface">

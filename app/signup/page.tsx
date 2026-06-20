@@ -374,8 +374,8 @@ export default function SignupPage() {
                           type="button"
                           onClick={() => {
                             const newGames = isSelected 
-                              ? formData.gamePlayed.filter(g => g !== game)
-                              : [...formData.gamePlayed, game];
+                              ? []
+                              : [game];
                             setFormData({...formData, gamePlayed: newGames});
                           }}
                           className={`flex items-center justify-between px-6 py-6 border ${isSelected ? 'border-primary bg-primary/10 text-primary' : 'border-outline bg-surface text-on-surface-variant hover:bg-surface-variant'} transition-all`}

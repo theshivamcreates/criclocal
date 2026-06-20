@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { LogOut, Save, Camera } from "lucide-react";
 import imageCompression from "browser-image-compression";
 import { uploadToImageKit } from "@/lib/imagekitUpload";
+import { logout } from "@/lib/firebaseAuth";
 
 export default function ProfilePage() {
   const router = useRouter();

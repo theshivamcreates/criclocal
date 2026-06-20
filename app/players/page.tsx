@@ -171,12 +171,12 @@ export default function PlayersPage() {
             <p className="text-on-surface-variant font-bold">Try adjusting your search criteria.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 items-start">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {displayedPlayers.map(player => (
               <div 
                 key={player.id} 
                 onClick={() => setSelectedPlayer(player)}
-                className="bg-surface border border-outline rounded-3xl shadow-sm overflow-hidden flex flex-col hover:shadow-lg hover:-translate-y-1 hover:border-primary transition-all duration-300 group cursor-pointer"
+                className="bg-surface border border-outline rounded-3xl shadow-sm overflow-hidden flex flex-col hover:shadow-lg hover:-translate-y-1 hover:border-primary transition-all duration-300 group cursor-pointer h-[320px]"
               >
                 
                 {/* Banner / Header area */}

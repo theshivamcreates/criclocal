@@ -4,17 +4,34 @@ import Link from "next/link";
 import { ArrowRight, Trophy, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useState, useEffect } from "react";
-import { auth } from "@/lib/firebase";
+import { auth, firestore } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 
 export default function HomePage() {
   const [user, setUser] = useState<User | null>(null);
+  const [gamePlayed, setGamePlayed] = useState<string[]>([]);
 
   useEffect(() => {
     if (!auth) return;
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      if (u && firestore) {
+        try {
+          const snap = await getDoc(doc(firestore, `users/${u.uid}`));
+          if (snap.exists()) {
+            setGamePlayed(snap.data()?.gamePlayed || []);
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    });
     return unsub;
   }, []);
+
+  const primarySport = gamePlayed[0] || "Cricket";
+  const isFootball = primarySport === "Football";
 
   return (
     <AppShell>
@@ -58,7 +75,7 @@ export default function HomePage() {
                     See Recent Matches <ArrowRight size={18} strokeWidth={3}/>
                   </Link>
                   <Link 
-                    href="/" 
+                    href="/players" 
                     className="bg-inverse-surface/50 backdrop-blur border-2 border-on-primary text-on-primary font-bold uppercase tracking-widest text-sm px-8 py-4 flex items-center justify-center hover:bg-on-primary hover:text-inverse-surface transition-colors"
                   >
                     Explore Network
@@ -73,7 +90,7 @@ export default function HomePage() {
                     Join the Community <ArrowRight size={18} strokeWidth={3}/>
                   </Link>
                   <Link 
-                    href="/" 
+                    href="/players" 
                     className="bg-inverse-surface/50 backdrop-blur border-2 border-on-primary text-on-primary font-bold uppercase tracking-widest text-sm px-8 py-4 flex items-center justify-center hover:bg-on-primary hover:text-inverse-surface transition-colors"
                   >
                     Explore Network
@@ -114,13 +131,13 @@ export default function HomePage() {
                   <Users size={24} strokeWidth={2.5}/>
                 </div>
                 <h3 className="font-display text-3xl font-black text-on-primary uppercase tracking-tight mb-3">
-                  Team Management
+                  {isFootball ? "Club Management" : "Team Management"}
                 </h3>
                 <p className="text-inverse-on-surface opacity-80 max-w-md mb-8">
                   Take total control of your roster. Streamline day-to-day operations, track critical finances, and coordinate match schedules with uncompromising precision.
                 </p>
-                <Link href="#" className="text-primary font-bold uppercase tracking-widest text-xs flex items-center gap-2 hover:text-primary-container">
-                  Manage Team <ArrowRight size={14} strokeWidth={3}/>
+                <Link href={isFootball ? "/clubs" : "/teams"} className="text-primary font-bold uppercase tracking-widest text-xs flex items-center gap-2 hover:text-primary-container">
+                  {isFootball ? "Manage Club" : "Manage Team"} <ArrowRight size={14} strokeWidth={3}/>
                 </Link>
               </div>
             </div>

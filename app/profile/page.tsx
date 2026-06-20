@@ -323,7 +323,7 @@ export default function ProfilePage() {
 
             <div>
               <label className="mb-2 block text-sm font-bold text-on-surface">
-                Primary Sports
+                Sports
               </label>
               <div className="flex flex-wrap gap-3">
                 {["Cricket", "Football", "Basketball"].map(sport => {

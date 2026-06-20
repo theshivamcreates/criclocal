@@ -53,8 +53,8 @@ export default function ScoresPage() {
 
   const renderCricketCard = (match: CricketMatch & { id: string }) => {
     return (
-      <div key={match.id} className="bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-        <div className="bg-surface-dim border-b border-outline px-4 py-2 flex justify-between items-center text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+      <Link href={`/match/${match.id}`} key={match.id} className="bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden flex flex-col hover:shadow-md hover:border-primary transition-all group block">
+        <div className="bg-surface-dim border-b border-outline px-4 py-2 flex justify-between items-center text-xs font-bold text-on-surface-variant uppercase tracking-widest group-hover:bg-primary/5 transition-colors">
           <span>Cricket</span>
           <span className="flex items-center gap-1"><Calendar size={12}/> Ended</span>
         </div>
@@ -68,17 +68,17 @@ export default function ScoresPage() {
              <div className="text-xl font-black bg-surface-variant px-3 py-1 rounded-md text-on-surface">{match.innings?.["2"]?.runs || 0}/{match.innings?.["2"]?.wickets || 0}</div>
            </div>
         </div>
-        <div className="bg-inverse-surface text-inverse-on-surface p-3 text-center text-sm font-bold">
+        <div className="bg-inverse-surface text-inverse-on-surface p-3 text-center text-sm font-bold group-hover:bg-primary group-hover:text-white transition-colors">
           {match.result || "Match Completed"}
         </div>
-      </div>
+      </Link>
     );
   };
 
   const renderFootballCard = (match: FootballMatch & { id: string }) => {
     return (
-      <div key={match.id} className="bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-        <div className="bg-surface-dim border-b border-outline px-4 py-2 flex justify-between items-center text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+      <Link href={`/football/match/${match.id}`} key={match.id} className="bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden flex flex-col hover:shadow-md hover:border-primary transition-all group block">
+        <div className="bg-surface-dim border-b border-outline px-4 py-2 flex justify-between items-center text-xs font-bold text-on-surface-variant uppercase tracking-widest group-hover:bg-primary/5 transition-colors">
           <span>Football</span>
           <span className="flex items-center gap-1"><Calendar size={12}/> Full Time</span>
         </div>
@@ -109,10 +109,10 @@ export default function ScoresPage() {
               </div>
            </div>
         </div>
-        <div className="bg-inverse-surface text-inverse-on-surface p-3 text-center text-sm font-bold">
+        <div className="bg-inverse-surface text-inverse-on-surface p-3 text-center text-sm font-bold group-hover:bg-primary group-hover:text-white transition-colors">
           {match.result || "Match Completed"}
         </div>
-      </div>
+      </Link>
     );
   };
 

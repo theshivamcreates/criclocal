@@ -188,6 +188,37 @@ export default function ScorerPage() {
     );
   }
 
+  function handleEndMatch() {
+    if (!match) return;
+    const inn1 = match.innings?.["1"];
+    const inn2 = match.innings?.["2"];
+    let resultString = "Match Completed";
+    
+    if (inn1 && inn2) {
+      if (inn2.runs > inn1.runs) {
+        // Team 2 (chasing team) wins
+        const wicketsLeft = 10 - inn2.wickets;
+        const winnerName = inn2.battingTeam === "team1" ? match.meta.team1 : match.meta.team2;
+        resultString = `${winnerName} won by ${wicketsLeft} wickets`;
+      } else if (inn1.runs > inn2.runs) {
+        // Team 1 (defending team) wins
+        const runDiff = inn1.runs - inn2.runs;
+        const winnerName = inn1.battingTeam === "team1" ? match.meta.team1 : match.meta.team2;
+        resultString = `${winnerName} won by ${runDiff} runs`;
+      } else {
+        resultString = "Match Tied";
+      }
+    } else if (inn1) {
+      // Only 1 innings played, maybe abandoned or DL method
+      resultString = "Match Abandoned / Incomplete";
+    }
+    
+    const confirmMessage = `Are you sure you want to end this match?\n\nCalculated Result: ${resultString}`;
+    if (confirm(confirmMessage)) {
+      void runAction(() => completeMatch(matchId, resultString));
+    }
+  }
+
   if (!match || !innings) {
     return (
       <AppShell>
@@ -367,13 +398,11 @@ export default function ScorerPage() {
           )}
           {match.meta.status !== "completed" && (
             <button
-              className="rounded-lg bg-emerald-600 px-4 py-3 font-black text-white disabled:opacity-50"
+              className="rounded-lg bg-inverse-surface px-4 py-3 font-black text-white disabled:opacity-50"
               disabled={busy}
-              onClick={() =>
-                runAction(() => completeMatch(matchId, "Match Ended"))
-              }
+              onClick={handleEndMatch}
             >
-              Complete Match
+              End Match
             </button>
           )}
         </div>

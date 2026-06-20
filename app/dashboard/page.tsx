@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { useAdmin } from "@/hooks/useAdmin";

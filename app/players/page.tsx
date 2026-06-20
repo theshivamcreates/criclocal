@@ -171,7 +171,7 @@ export default function PlayersPage() {
             <p className="text-on-surface-variant font-bold">Try adjusting your search criteria.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 items-start">
             {displayedPlayers.map(player => (
               <div 
                 key={player.id} 
@@ -180,27 +180,27 @@ export default function PlayersPage() {
               >
                 
                 {/* Banner / Header area */}
-                <div className="h-28 bg-surface-dim border-b border-outline relative">
+                <div className="h-20 bg-surface-dim border-b border-outline relative">
                    <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] mix-blend-overlay"></div>
                 </div>
 
-                <div className="px-8 relative flex-1 flex flex-col pb-8">
+                <div className="px-6 relative flex-1 flex flex-col pb-6">
                   {/* Profile Photo */}
-                  <div className="absolute -top-12 left-8">
+                  <div className="absolute -top-10 left-6">
                     {player.photoURL ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={player.photoURL} alt={player.name} className="w-24 h-24 rounded-full border-[6px] border-surface object-cover bg-surface-dim shadow-md group-hover:scale-105 transition-transform duration-300" />
+                      <img src={player.photoURL} alt={player.name} className="w-20 h-20 rounded-full border-[4px] border-surface object-cover bg-surface-dim shadow-md group-hover:scale-105 transition-transform duration-300" />
                     ) : (
-                      <div className="w-24 h-24 rounded-full border-[6px] border-surface bg-primary flex items-center justify-center text-white font-black text-4xl shadow-md group-hover:scale-105 transition-transform duration-300">
+                      <div className="w-20 h-20 rounded-full border-[4px] border-surface bg-primary flex items-center justify-center text-white font-black text-3xl shadow-md group-hover:scale-105 transition-transform duration-300">
                         {player.name ? player.name.charAt(0).toUpperCase() : "U"}
                       </div>
                     )}
                   </div>
 
                   {/* Primary Role Badge */}
-                  <div className="flex justify-end pt-4 mb-4">
+                  <div className="flex justify-end pt-3 mb-2">
                      {player.primaryRole && (
-                       <span className="text-[10px] font-black uppercase tracking-widest bg-inverse-surface text-inverse-on-surface px-4 py-1.5 rounded-full flex items-center gap-1 shadow-sm">
+                       <span className="text-[10px] font-black uppercase tracking-widest bg-inverse-surface text-inverse-on-surface px-3 py-1 rounded-full flex items-center gap-1 shadow-sm">
                           {player.primaryRole === "Coach" ? <Shield size={12} /> : <Activity size={12} />}
                           {player.primaryRole}
                        </span>
@@ -208,18 +208,18 @@ export default function PlayersPage() {
                   </div>
 
                   {/* Info */}
-                  <div className="mt-4 flex-1">
-                    <h3 className="font-display text-2xl font-black text-on-surface uppercase tracking-tight line-clamp-1 group-hover:text-primary transition-colors">
+                  <div className="mt-2 flex-1">
+                    <h3 className="font-display text-xl font-black text-on-surface uppercase tracking-tight line-clamp-1 group-hover:text-primary transition-colors">
                       {player.name}
                     </h3>
                     {player.username && (
-                      <p className="text-sm font-bold text-on-surface-variant mb-6">
+                      <p className="text-xs font-bold text-on-surface-variant mb-4">
                         @{player.username}
                       </p>
                     )}
 
                     {player.bio && (
-                      <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-3 mb-6 italic border-l-[3px] border-primary/30 pl-4 py-1">
+                      <p className="text-sm text-on-surface-variant leading-snug line-clamp-2 mb-4 italic border-l-[3px] border-primary/30 pl-3 py-0.5">
                         &quot;{player.bio}&quot;
                       </p>
                     )}
@@ -227,9 +227,9 @@ export default function PlayersPage() {
 
                   {/* Sports Tags */}
                   {player.gamePlayed && player.gamePlayed.length > 0 && (
-                    <div className="mt-auto pt-6 border-t border-outline-variant flex flex-wrap gap-2">
+                    <div className="mt-auto pt-4 border-t border-outline-variant flex flex-wrap gap-2">
                       {player.gamePlayed.map(sport => (
-                        <span key={sport} className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 px-3 py-1.5 rounded-md border border-primary/20">
+                        <span key={sport} className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 px-2 py-1.5 rounded-md border border-primary/20">
                           {sport}
                         </span>
                       ))}

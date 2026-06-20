@@ -162,6 +162,7 @@ export default function ProfilePage() {
         gamePlayed,
         primaryRole,
         bio,
+        photoURL: finalPhotoUrl,
         ...(username !== originalUsername ? { username: username.toLowerCase(), usernameEdits: finalUsernameEdits } : {})
       });
       setMessage("Profile updated successfully!");

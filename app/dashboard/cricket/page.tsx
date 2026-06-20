@@ -547,7 +547,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <label className="block text-sm font-bold">
                   Overs
                   <input
@@ -560,32 +560,6 @@ export default function DashboardPage() {
                       setForm({ ...form, overs: Number(event.target.value) })
                     }
                   />
-                </label>
-                <label className="block text-sm font-bold">
-                  Toss
-                  <select
-                    className="mt-1 w-full rounded-md border border-outline px-3 py-2"
-                    value={form.toss}
-                    onChange={(event) =>
-                      setForm({ ...form, toss: event.target.value })
-                    }
-                  >
-                    <option value="team1">Team 1</option>
-                    <option value="team2">Team 2</option>
-                  </select>
-                </label>
-                <label className="block text-sm font-bold">
-                  Elected
-                  <select
-                    className="mt-1 w-full rounded-md border border-outline px-3 py-2"
-                    value={form.elected}
-                    onChange={(event) =>
-                      setForm({ ...form, elected: event.target.value })
-                    }
-                  >
-                    <option value="bat">Bat</option>
-                    <option value="field">Field</option>
-                  </select>
                 </label>
               </div>
 

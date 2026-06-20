@@ -17,6 +17,8 @@ import {
   updatePlayerNames,
   startSecondInnings,
   completeMatch,
+  updateMatchMeta,
+  updateMatch,
 } from "@/lib/firebaseMatches";
 import {
   applyBall,
@@ -96,6 +98,30 @@ export default function ScorerPage() {
         nonStrikerName,
         bowlerName,
       });
+    });
+  }
+
+  function handleUpdateToss(updates: { toss?: string; elected?: string }) {
+    if (!match || !innings) return;
+    const newToss = updates.toss || match.meta.toss;
+    const newElected = updates.elected || match.meta.elected;
+    const newBattingTeam =
+      newElected === "bat"
+        ? newToss
+        : newToss === "team1"
+          ? "team2"
+          : "team1";
+
+    void runAction(async () => {
+      await updateMatchMeta(matchId, {
+        toss: newToss,
+        elected: newElected,
+      });
+      if (match.currentInnings === 1) {
+        await updateMatch(matchId, {
+          "innings/1/battingTeam": newBattingTeam,
+        } as any);
+      }
     });
   }
 
@@ -290,6 +316,33 @@ export default function ScorerPage() {
         <Scoreboard match={match} />
 
         <div className="mt-4 rounded-lg border border-outline bg-surface p-4">
+          <div className="mb-4 grid gap-3 sm:grid-cols-2 border-b border-outline pb-4">
+            <label className="block text-sm font-bold">
+              Toss Won By
+              <select
+                className="mt-1 w-full rounded-md border border-outline px-3 py-2 bg-surface"
+                value={match.meta.toss}
+                onChange={(e) => handleUpdateToss({ toss: e.target.value })}
+                disabled={match.currentInnings > 1}
+              >
+                <option value="team1">{match.meta.team1}</option>
+                <option value="team2">{match.meta.team2}</option>
+              </select>
+            </label>
+            <label className="block text-sm font-bold">
+              Elected To
+              <select
+                className="mt-1 w-full rounded-md border border-outline px-3 py-2 bg-surface"
+                value={match.meta.elected}
+                onChange={(e) => handleUpdateToss({ elected: e.target.value })}
+                disabled={match.currentInnings > 1}
+              >
+                <option value="bat">Bat</option>
+                <option value="field">Field</option>
+              </select>
+            </label>
+          </div>
+
           <h2 className="mb-3 font-black">Edit Players</h2>
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="block text-sm font-bold">

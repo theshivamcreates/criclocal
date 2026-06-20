@@ -13,6 +13,7 @@ import { auth, firestore } from "@/lib/firebase";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [gamePlayed, setGamePlayed] = useState<string[]>([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
@@ -23,20 +24,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (u && firestore) {
         try {
           const snap = await getDoc(doc(firestore, `users/${u.uid}`));
-          setIsAdmin(snap.exists() && snap.data()?.role === "admin");
+          if (snap.exists()) {
+            const data = snap.data();
+            setIsAdmin(data?.role === "admin");
+            setGamePlayed(data?.gamePlayed || []);
+          } else {
+            setIsAdmin(false);
+            setGamePlayed([]);
+          }
         } catch (e) {
           setIsAdmin(false);
+          setGamePlayed([]);
         }
       } else {
         setIsAdmin(false);
+        setGamePlayed([]);
       }
     });
   }, []);
 
+  const primarySport = gamePlayed[0];
+  const teamLink = primarySport === "Cricket" 
+    ? { name: "Teams", href: "/teams" } 
+    : { name: "Clubs", href: "/clubs" };
+
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "Tournaments", href: "/tournaments", match: "/tournament" },
-    { name: "Clubs", href: "/clubs" },
+    teamLink,
     { name: "Players", href: "/players" },
   ];
 

@@ -3,9 +3,11 @@
 import { useEffect, useState, useMemo } from "react";
 import { AppShell } from "@/components/AppShell";
 import { firestore, auth } from "@/lib/firebase";
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, query, where, onSnapshot } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { Users, Search, Activity, Shield, X } from "lucide-react";
+import { Users, Search, Activity, Shield, X, MessageSquare, UserPlus, Check } from "lucide-react";
+import { getChatId, sendFriendRequest } from "@/lib/chatUtils";
+import { useRouter } from "next/navigation";
 
 interface Player {
   id: string;
@@ -26,6 +28,9 @@ interface Player {
   battingStyle?: string;
   bowlingStyle?: string;
   cricketSkill?: string;
+  pickleballSkill?: string;
+  paddleHand?: string;
+  preferredSide?: string;
 }
 
 export default function PlayersPage() {
@@ -33,9 +38,15 @@ export default function PlayersPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentUserSports, setCurrentUserSports] = useState<string[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [friends, setFriends] = useState<string[]>([]);
+  const [sentRequests, setSentRequests] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showAllSports, setShowAllSports] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [myPickleballTeam, setMyPickleballTeam] = useState<any>(null);
+  const [sentTeamRequests, setSentTeamRequests] = useState<string[]>([]);
+
+  const router = useRouter();
 
   const calculateAge = (dobString?: string) => {
     if (!dobString) return "N/A";
@@ -66,10 +77,12 @@ export default function PlayersPage() {
         setPlayers(usersList);
       } catch (err) {
         console.error("Error fetching players:", err);
-      } finally {
-        setLoading(false);
       }
     };
+
+    let unsubRequests: () => void;
+    let unsubFriends: () => void;
+    let unsubTeamRequests: () => void;
 
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -81,14 +94,51 @@ export default function PlayersPage() {
             const data = userDoc.data();
             setCurrentUserSports(data.gamePlayed || []);
           }
+
+          // Listen to sent requests
+          const reqQ = query(collection(firestore, "friendRequests"), where("from", "==", user.uid));
+          unsubRequests = onSnapshot(reqQ, snap => {
+            setSentRequests(snap.docs.map(d => d.data().to as string));
+          });
+
+          // Listen to friends
+          const friendQ = query(collection(firestore, "friendships"), where("participants", "array-contains", user.uid));
+          unsubFriends = onSnapshot(friendQ, snap => {
+            const fList = snap.docs.map(d => {
+              const p = d.data().participants as string[];
+              return p.find(id => id !== user.uid)!;
+            });
+            setFriends(fList);
+          });
+
+          // Fetch my team
+          const { getUserTeam } = await import("@/lib/teamUtils");
+          const team = await getUserTeam(user.uid, "Pickleball");
+          setMyPickleballTeam(team);
+
+          // Listen to sent team requests
+          const tReqQ = query(collection(firestore, "teamRequests"), where("from", "==", user.uid));
+          unsubTeamRequests = onSnapshot(tReqQ, snap => {
+            setSentTeamRequests(snap.docs.map(d => d.data().to as string));
+          });
+
         } catch (err) {
           console.error("Error fetching user profile:", err);
         }
+      } else {
+        setCurrentUserId(null);
+        setCurrentUserSports([]);
       }
-      fetchPlayers();
+      await fetchPlayers();
+      setLoading(false);
     });
 
-    return () => unsub();
+    return () => {
+      unsub();
+      if (unsubRequests) unsubRequests();
+      if (unsubFriends) unsubFriends();
+      if (unsubTeamRequests) unsubTeamRequests();
+    };
   }, []);
 
   const displayedPlayers = useMemo(() => {
@@ -300,6 +350,59 @@ export default function PlayersPage() {
                     @{selectedPlayer.username}
                   </p>
                 )}
+
+                {/* Actions */}
+                {currentUserId && currentUserId !== selectedPlayer.id && (
+                  <div className="flex flex-wrap gap-3 mb-8">
+                    <button 
+                      onClick={() => {
+                        const chatId = getChatId(currentUserId, selectedPlayer.id);
+                        router.push(`/chat/${chatId}`);
+                      }}
+                      className="flex items-center gap-2 bg-primary text-on-primary px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-widest hover:bg-primary-container transition-colors"
+                    >
+                      <MessageSquare size={16} /> Message
+                    </button>
+                    
+                    {friends.includes(selectedPlayer.id) ? (
+                      <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-widest">
+                        <Check size={16} /> Friends
+                      </div>
+                    ) : sentRequests.includes(selectedPlayer.id) ? (
+                      <div className="flex items-center gap-2 bg-surface-dim border border-outline text-on-surface-variant px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-widest">
+                        <Check size={16} /> Request Sent
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => sendFriendRequest(currentUserId, selectedPlayer.id)}
+                        className="flex items-center gap-2 bg-inverse-surface text-inverse-on-surface px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-widest hover:opacity-80 transition-opacity"
+                      >
+                        <UserPlus size={16} /> Add Friend
+                      </button>
+                    )}
+                    {myPickleballTeam && 
+                     myPickleballTeam.ownerId === currentUserId && 
+                     myPickleballTeam.players.length < 2 && 
+                     selectedPlayer.gamePlayed?.includes("Pickleball") && 
+                     !myPickleballTeam.players.includes(selectedPlayer.id) && (
+                      sentTeamRequests.includes(selectedPlayer.id) ? (
+                        <div className="flex items-center gap-2 bg-surface-dim border border-outline text-on-surface-variant px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-widest">
+                          <Check size={16} /> Team Invite Sent
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={async () => {
+                            const { sendTeamInvite } = await import("@/lib/teamUtils");
+                            await sendTeamInvite(myPickleballTeam.id, myPickleballTeam.name, "Pickleball", currentUserId, selectedPlayer.id);
+                          }}
+                          className="flex items-center gap-2 bg-primary/20 text-primary px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-widest hover:bg-primary/30 transition-colors border border-primary/30"
+                        >
+                          <Shield size={16} /> Invite to Team
+                        </button>
+                      )
+                    )}
+                  </div>
+                )}
                 
                 {/* Sports Tags */}
                 {selectedPlayer.gamePlayed && selectedPlayer.gamePlayed.length > 0 && (
@@ -389,6 +492,31 @@ export default function PlayersPage() {
                         <div className="bg-surface-dim p-4 rounded-xl border border-outline">
                           <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Skill</p>
                           <p className="text-lg font-black text-on-surface">{selectedPlayer.cricketSkill}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {selectedPlayer.gamePlayed?.includes("Pickleball") && (
+                    <>
+                      {selectedPlayer.pickleballSkill && (
+                        <div className="bg-surface-dim p-4 rounded-xl border border-outline">
+                          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Rating</p>
+                          <p className="text-lg font-black text-on-surface">{selectedPlayer.pickleballSkill}</p>
+                        </div>
+                      )}
+                      
+                      {selectedPlayer.paddleHand && (
+                        <div className="bg-surface-dim p-4 rounded-xl border border-outline">
+                          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Hand</p>
+                          <p className="text-lg font-black text-on-surface">{selectedPlayer.paddleHand}</p>
+                        </div>
+                      )}
+                      
+                      {selectedPlayer.preferredSide && (
+                        <div className="bg-surface-dim p-4 rounded-xl border border-outline">
+                          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Preferred Side</p>
+                          <p className="text-lg font-black text-on-surface">{selectedPlayer.preferredSide}</p>
                         </div>
                       )}
                     </>

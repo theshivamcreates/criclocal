@@ -2,18 +2,25 @@
 
 import { use } from "react";
 import { AppShell } from "@/components/AppShell";
-import { db } from "@/lib/firebase";
-import { ref as dbRef, onValue } from "firebase/database";
+import { db, auth, firestore } from "@/lib/firebase";
+import { ref as dbRef, onValue, push, set } from "firebase/database";
+import { doc, getDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { Trophy, Calendar, MapPin, Users, Award, X, Users2 } from "lucide-react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import Script from "next/script";
+import { PlayerProfileModal } from "@/components/PlayerProfileModal";
+import { useSearchParams } from "next/navigation";
+import { getUserTeam, sendNotification } from "@/lib/teamUtils";
+import { update } from "firebase/database";
 
 interface Team {
   id: string;
   name: string;
   logo?: string;
   color?: string;
+  userId?: string;
   roster?: { name: string; role: string }[];
 }
 
@@ -28,6 +35,12 @@ interface TournamentData {
   status?: string;
   bannerUrl?: string;
   createdAt: number;
+  sport?: string;
+  settings?: {
+    format?: string;
+    maxSets?: number;
+    pointsToWin?: number;
+  };
   teams?: Record<string, Team>;
 }
 
@@ -42,12 +55,18 @@ export default function PublicTournamentPage({
   const [tournament, setTournament] = useState<TournamentData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [isParticipating, setIsParticipating] = useState(false);
+  const searchParams = useSearchParams();
+  const payForTeamKey = searchParams.get("payForTeam");
 
   useEffect(() => {
     // Determine the Firebase DB path based on the sport parameter
     const dbPath =
       sport === "football"
         ? `football/tournaments/${tournamentId}`
+        : sport === "pickleball"
+        ? `pickleball/tournaments/${tournamentId}`
         : `tournaments/${tournamentId}`;
 
     const tRef = dbRef(db, dbPath);
@@ -104,6 +123,201 @@ export default function PublicTournamentPage({
       }))
     : [];
 
+  const isSingles = tournament?.sport === "pickleball" && tournament?.settings?.format === "Singles";
+
+  const finalizeParticipation = async (userData: any, pickleballTeam?: any) => {
+    try {
+      const dbPath =
+        sport === "football"
+          ? `football/tournaments/${tournamentId}`
+          : sport === "pickleball"
+          ? `pickleball/tournaments/${tournamentId}`
+          : `tournaments/${tournamentId}`;
+          
+      if (payForTeamKey && !isSingles) {
+        // This is the second player completing the payment
+        const teamPath = `${dbPath}/teams/${payForTeamKey}`;
+        await update(dbRef(db, teamPath), {
+          paymentStatus: "confirmed",
+          pendingPaymentFrom: null
+        });
+        
+        // Notify owner
+        const teamData = tournament?.teams?.[payForTeamKey] as any;
+        if (teamData?.userId) {
+          await sendNotification({
+            userId: teamData.userId,
+            title: "Registration Confirmed",
+            message: `${userData.name} completed the payment. Your team is fully registered for ${tournament?.name}!`,
+            type: "general"
+          });
+        }
+        
+        alert("Registration confirmed! Your team is now enrolled.");
+      } else {
+        const newTeamRef = push(dbRef(db, `${dbPath}/teams`));
+        
+        const newTeam: any = {
+          name: isSingles ? (userData.name || "Unknown") : (pickleballTeam ? pickleballTeam.name : `${userData.name}'s Team`),
+          logo: (pickleballTeam && pickleballTeam.logoURL) ? pickleballTeam.logoURL : (userData.photoURL || null),
+          userId: auth!.currentUser!.uid,
+        };
+        
+        if (!isSingles && pickleballTeam && pickleballTeam.playerDetails) {
+          newTeam.roster = pickleballTeam.playerDetails.map((p: any) => ({
+            name: p.name,
+            userId: p.id,
+            role: p.id === pickleballTeam.ownerId ? "Captain" : "Player"
+          }));
+          
+          const teammateId = pickleballTeam.players.find((id: string) => id !== auth!.currentUser!.uid);
+          
+          newTeam.paymentStatus = "partial";
+          newTeam.pendingPaymentFrom = teammateId;
+          
+          await set(newTeamRef, newTeam);
+          
+          // Send notification to teammate
+          await sendNotification({
+            userId: teammateId,
+            title: "Tournament Payment Required",
+            message: `${userData.name} registered ${pickleballTeam.name} for ${tournament?.name}. Please pay your share to confirm!`,
+            type: "payment_required",
+            actionUrl: `/tournaments/${sport}/${tournamentId}?payForTeam=${newTeamRef.key}`
+          });
+          
+          alert("Your half is paid! We sent a notification to your teammate to complete the registration.");
+        } else {
+          if (!isSingles) {
+            newTeam.roster = [{ name: userData.name || "Unknown", role: "Captain" }];
+          }
+          await set(newTeamRef, newTeam);
+          alert("Successfully registered for the tournament!");
+        }
+      }
+      
+    } catch (err) {
+      console.error("Error saving team:", err);
+      alert("An error occurred while joining the tournament. Please contact admin.");
+    } finally {
+      setIsParticipating(false);
+    }
+  };
+
+  const handleParticipate = async () => {
+    if (!auth || !auth.currentUser) {
+      alert("You must be logged in to participate.");
+      return;
+    }
+    
+    setIsParticipating(true);
+    try {
+      const userDoc = await getDoc(doc(firestore, `users/${auth.currentUser.uid}`));
+      if (!userDoc.exists()) {
+        alert("Could not find your user profile.");
+        setIsParticipating(false);
+        return;
+      }
+      
+      const userData = userDoc.data();
+      let pickleballTeam = null;
+
+      // Pickleball Doubles Team Check
+      if (!isSingles && !payForTeamKey && sport === "pickleball") {
+        const team = await getUserTeam(auth.currentUser.uid, "Pickleball");
+        if (!team) {
+          alert("You must create or join a Pickleball team first.");
+          setIsParticipating(false);
+          return;
+        }
+        if (team.players.length < 2) {
+          alert("Your Pickleball team must have 2 players to register for a doubles tournament.");
+          setIsParticipating(false);
+          return;
+        }
+        // Fetch player details to embed in roster
+        const playerDetails = [];
+        for (const pId of team.players) {
+          const pDoc = await getDoc(doc(firestore, `users/${pId}`));
+          if (pDoc.exists()) {
+            playerDetails.push({ id: pDoc.id, ...pDoc.data() });
+          }
+        }
+        pickleballTeam = { ...team, playerDetails };
+      }
+      
+      // Calculate fee
+      let numericFee = 0;
+      if (tournament?.entryFee) {
+        // Strip out non-numeric characters except the decimal point
+        const parsed = parseFloat(tournament.entryFee.replace(/[^\d.]/g, ""));
+        if (!isNaN(parsed)) {
+          numericFee = parsed;
+        }
+      }
+      
+      if (!isSingles && sport === "pickleball") {
+         numericFee = numericFee / 2; // Split payment
+      }
+
+      // Proceed to Razorpay if fee > 0
+      if (numericFee > 0) {
+        // Razorpay expects amount in the smallest currency unit (e.g., paisa = rupees * 100)
+        // We round it to avoid floating point precision issues (e.g. 10.05 * 100 = 1004.9999999999999)
+        const amountInPaisa = Math.round(numericFee * 100);
+
+        const res = await fetch("/api/razorpay/order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: amountInPaisa }) // amount in paisa
+        });
+        
+        if (!res.ok) {
+          throw new Error("Failed to create Razorpay order");
+        }
+        
+        const data = await res.json();
+        const options = {
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+          amount: data.order.amount,
+          currency: data.order.currency,
+          name: "Cricket Overlay",
+          description: `Entry fee for ${tournament?.name}`,
+          order_id: data.order.id,
+          handler: async function (response: any) {
+            // Payment success handler
+            await finalizeParticipation(userData, pickleballTeam);
+          },
+          prefill: {
+            name: userData.name,
+            email: auth!.currentUser!.email || "",
+          },
+          theme: {
+            color: "#ed1c24", 
+          },
+        };
+        
+        const rzp = new (window as any).Razorpay(options);
+        rzp.on('payment.failed', function (response: any) {
+           console.error(response.error);
+           alert("Payment Failed: " + response.error.description);
+           setIsParticipating(false);
+        });
+        rzp.open();
+      } else {
+        // No fee or invalid fee, just participate directly
+        await finalizeParticipation(userData, pickleballTeam);
+      }
+    } catch (err) {
+      console.error("Error participating:", err);
+      alert("An error occurred while preparing the checkout.");
+      setIsParticipating(false);
+    }
+  };
+
+  const isAlreadyParticipating = teamList.some(t => t.userId === auth?.currentUser?.uid);
+  const isFull = teamList.length >= parseInt(tournament?.maxTeams || "16");
+
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case "registering":
@@ -120,6 +334,7 @@ export default function PublicTournamentPage({
 
   return (
     <AppShell>
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       {/* Hero Section */}
       <div className="relative w-full bg-surface-dim border-b border-outline">
         {tournament.bannerUrl && (
@@ -185,15 +400,34 @@ export default function PublicTournamentPage({
             {tournament.entryFee && (
               <div className="bg-surface/80 backdrop-blur-md border border-outline rounded-xl px-5 py-3 flex flex-col">
                 <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-1">Entry Fee</span>
-                <span className="text-xl font-black text-primary">{tournament.entryFee}</span>
+                <span className="text-xl font-black text-primary">₹{tournament.entryFee}</span>
               </div>
             )}
             <div className="bg-surface/80 backdrop-blur-md border border-outline rounded-xl px-5 py-3 flex flex-col">
-              <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-1">Teams</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-1">{isSingles ? "Players" : "Teams"}</span>
               <span className="text-xl font-black text-on-surface">
                 {teamList.length} <span className="text-base text-on-surface-variant font-medium">/ {tournament.maxTeams || "16"}</span>
               </span>
             </div>
+            {(!isAlreadyParticipating && !isFull || payForTeamKey) && (
+              <button
+                onClick={handleParticipate}
+                disabled={isParticipating}
+                className="bg-primary hover:bg-primary-container text-white px-6 py-4 rounded-xl font-black transition-colors self-stretch flex items-center"
+              >
+                {isParticipating ? "Processing..." : (payForTeamKey ? "Pay your share now" : "Participate Now")}
+              </button>
+            )}
+            {isAlreadyParticipating && (
+              <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 px-6 py-4 rounded-xl font-black self-stretch flex items-center">
+                You are participating
+              </div>
+            )}
+            {(isFull && !isAlreadyParticipating) && (
+              <div className="bg-surface-variant border border-outline text-on-surface-variant px-6 py-4 rounded-xl font-black self-stretch flex items-center">
+                Tournament is full
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -203,7 +437,7 @@ export default function PublicTournamentPage({
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-2xl font-black text-on-surface flex items-center gap-3">
             <Users2 className="text-primary" size={24} /> 
-            Participating Teams
+            {isSingles ? "Participating Players" : "Participating Teams"}
           </h2>
           <span className="bg-surface-variant text-on-surface-variant px-3 py-1 rounded-full text-sm font-bold">
             {teamList.length} Registered
@@ -213,16 +447,22 @@ export default function PublicTournamentPage({
         {teamList.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-outline bg-surface-dim p-12 text-center text-on-surface-variant">
             <Trophy className="mx-auto mb-4 opacity-50" size={48} />
-            <h3 className="text-xl font-black mb-2 text-on-surface">No teams registered yet</h3>
-            <p>Registration might be opening soon. Check back later to see the participating teams.</p>
+            <h3 className="text-xl font-black mb-2 text-on-surface">{isSingles ? "No players registered yet" : "No teams registered yet"}</h3>
+            <p>Registration might be opening soon. Check back later to see the participating {isSingles ? "players" : "teams"}.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {teamList.map((team) => (
               <button
                 key={team.id}
-                onClick={() => setSelectedTeam(team)}
-                className="group flex flex-col bg-surface hover:bg-surface-dim border border-outline hover:border-primary transition-all duration-300 rounded-2xl p-6 text-left relative overflow-hidden shadow-sm hover:shadow-md"
+                onClick={() => {
+                  if (isSingles && team.userId) {
+                    setSelectedUserId(team.userId);
+                  } else {
+                    setSelectedTeam(team);
+                  }
+                }}
+                className={`group flex flex-col bg-surface border border-outline transition-all duration-300 rounded-2xl p-6 text-left relative overflow-hidden shadow-sm hover:bg-surface-dim hover:border-primary hover:shadow-md cursor-pointer`}
               >
                 <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: team.color || "#ef4444" }} />
                 
@@ -245,10 +485,12 @@ export default function PublicTournamentPage({
                     <h3 className="font-black text-xl text-on-surface truncate group-hover:text-primary transition-colors">
                       {team.name}
                     </h3>
-                    <div className="flex items-center gap-2 mt-2 text-sm text-on-surface-variant font-medium">
-                      <Users size={16} />
-                      <span>{team.roster?.length || 0} Players</span>
-                    </div>
+                    {!isSingles && (
+                      <div className="flex items-center gap-2 mt-2 text-sm text-on-surface-variant font-medium">
+                        <Users size={16} />
+                        <span>{team.roster?.length || 0} Players</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </button>
@@ -257,8 +499,16 @@ export default function PublicTournamentPage({
         )}
       </div>
 
-      {/* Roster Popup Modal */}
-      {selectedTeam && (
+      {/* Player Profile Modal */}
+      {selectedUserId && (
+        <PlayerProfileModal
+          userId={selectedUserId}
+          onClose={() => setSelectedUserId(null)}
+        />
+      )}
+
+      {/* Roster Popup Modal (For non-singles without userId profile) */}
+      {selectedTeam && !selectedUserId && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div 
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -306,13 +556,21 @@ export default function PublicTournamentPage({
                 </div>
               ) : (
                 <ul className="space-y-3">
-                  {selectedTeam.roster.map((player, idx) => (
-                    <li key={idx} className="flex items-center justify-between p-4 rounded-xl border border-outline hover:border-primary/50 transition-colors bg-surface-dim">
+                  {selectedTeam.roster.map((player: any, idx: number) => (
+                    <li 
+                      key={idx} 
+                      onClick={() => {
+                        if (player.userId) {
+                           setSelectedUserId(player.userId);
+                        }
+                      }}
+                      className="flex items-center justify-between p-4 rounded-xl border border-outline hover:border-primary/50 transition-colors bg-surface-dim cursor-pointer group"
+                    >
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-black text-primary w-6 text-center">
                           {idx + 1}
                         </span>
-                        <span className="font-bold text-on-surface text-lg">{player.name}</span>
+                        <span className="font-bold text-on-surface text-lg group-hover:text-primary transition-colors">{player.name}</span>
                       </div>
                       <span className="text-xs font-black uppercase tracking-widest px-3 py-1 bg-surface rounded-full border border-outline-variant text-on-surface-variant">
                         {player.role}

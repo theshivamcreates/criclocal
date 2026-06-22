@@ -542,9 +542,23 @@ export default function FootballDashboardPage() {
                   <input required className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal text-on-surface" value={tournamentName} onChange={(e) => setTournamentName(e.target.value)} placeholder="e.g. Winter Hoops 2026" />
                 </label>
                 <div className="grid grid-cols-2 gap-3">
-                  <label className="block text-sm font-bold">Entry Fee
-                    <input className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal text-on-surface" value={tEntryFee} onChange={(e) => setTEntryFee(e.target.value)} placeholder="e.g. $1,500" />
-                  </label>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant">Entry Fee</label>
+                    <div className="relative mt-1">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                        <span className="text-on-surface-variant sm:text-sm">₹</span>
+                      </div>
+                      <input 
+                        type="number"
+                        min="0"
+                        step="1"
+                        className="block w-full rounded-md border border-outline py-2 pl-7 pr-3 text-on-surface font-normal" 
+                        value={tEntryFee} 
+                        onChange={(e) => setTEntryFee(e.target.value)} 
+                        placeholder="e.g. 1500" 
+                      />
+                    </div>
+                  </div>
                   <label className="block text-sm font-bold">Max Teams
                     <input type="number" className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal text-on-surface" value={tMaxTeams} onChange={(e) => setTMaxTeams(e.target.value)} />
                   </label>
@@ -736,7 +750,7 @@ export default function FootballDashboardPage() {
                               {Object.keys(t.teams || {}).length} teams
                             </p>
                           </div>
-                          <div className="text-primary font-bold text-sm bg-primary px-3 py-1.5 rounded-full">
+                          <div className="text-white font-bold text-sm bg-primary px-3 py-1.5 rounded-full">
                             Manage &rarr;
                           </div>
                         </div>

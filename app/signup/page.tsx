@@ -366,7 +366,7 @@ export default function SignupPage() {
                  <div>
                   <label className="block text-[10px] font-black tracking-widest uppercase text-on-surface-variant mb-3">Select Primary Sports</label>
                   <div className="grid grid-cols-1 gap-4">
-                    {["Football", "Cricket"].map(game => {
+                    {["Football", "Cricket", "Pickleball"].map(game => {
                       const isSelected = formData.gamePlayed.includes(game);
                       return (
                         <button

@@ -33,8 +33,11 @@ export default function CricketMatchDetails() {
   if (loading) {
     return (
       <AppShell>
-        <div className="flex h-screen items-center justify-center bg-background">
-          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <div className="min-h-[85vh] flex items-center justify-center bg-inverse-surface">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-surface-bright font-black uppercase tracking-widest text-xs animate-pulse">Loading Match Data...</p>
+          </div>
         </div>
       </AppShell>
     );

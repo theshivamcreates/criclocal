@@ -9,7 +9,10 @@ import {
   signOut,
   type User,
 } from "firebase/auth";
-import { onValue, ref as dbRef, get } from "firebase/database";
+import { onValue, ref as dbRef, remove,
+  update,
+  get,
+} from "firebase/database";
 import {
   ref as storageRef,
   uploadBytes,
@@ -24,56 +27,48 @@ import {
   Smartphone,
   Upload,
   Trash2,
+  ArrowLeft,
   Lock,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db, storage, isFirebaseConfigured, firestore } from "@/lib/firebase";
-import { saveMatch } from "@/lib/firebaseMatches";
-import { buildNewMatch } from "@/lib/matchUtils";
-import type { Match, Player } from "@/types/match";
+import { savePickleballMatch } from "@/lib/firebasePickleball";
+import type { PickleballMatch, PickleballPlayer } from "@/types/pickleball";
 import { v4 as uuidv4 } from "uuid";
 
-export default function DashboardPage() {
+export default function PickleballDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isRoleLoaded, setIsRoleLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<"matches" | "tournaments">(
     "matches",
   );
-  const [matches, setMatches] = useState<Record<string, Match>>({});
+  const [matches, setMatches] = useState<Record<string, PickleballMatch>>({});
   const [tournaments, setTournaments] = useState<Record<string, any>>({});
+
   const [form, setForm] = useState<{
     team1: string;
-    team1Short: string;
     team2: string;
-    team2Short: string;
-    overs: number;
-    toss: string;
-    elected: string;
     team1Color: string;
     team2Color: string;
-    team1Roster: Player[];
-    team2Roster: Player[];
+    team1Roster: PickleballPlayer[];
+    team2Roster: PickleballPlayer[];
+    format: string;
+    maxSets: number;
+    pointsToWin: number;
   }>({
-    team1: "Mumbai Indians",
-    team1Short: "MI",
-    team2: "Chennai Super Kings",
-    team2Short: "CSK",
-    overs: 20,
-    toss: "team1",
-    elected: "bat",
-    team1Color: "#004ba0",
-    team2Color: "#ffff3c",
-    team1Roster:
-      "Rohit, Kishan, Surya, Hardik, Tilak, David, Nabi, Shepherd, Coetzee, Bumrah, Madhwal"
-        .split(",")
-        .map((name) => ({ name, role: "Player" })),
-    team2Roster:
-      "Ruturaj, Rachin, Rahane, Mitchell, Dube, Jadeja, Dhoni, Thakur, Chahar, Deshpande, Pathirana"
-        .split(",")
-        .map((name) => ({ name, role: "Player" })),
+    team1: "Synergy FC",
+    team2: "Phoenix Athletic",
+    team1Color: "#e11d48",
+    team2Color: "#1e40af",
+    team1Roster: [],
+    team2Roster: [],
+    format: "Doubles",
+    maxSets: 3,
+    pointsToWin: 11,
   });
+
   const [tournamentName, setTournamentName] = useState("");
   const [tEntryFee, setTEntryFee] = useState("");
   const [tMaxTeams, setTMaxTeams] = useState("16");
@@ -81,7 +76,11 @@ export default function DashboardPage() {
   const [tLocation, setTLocation] = useState("");
   const [tSkillLevel, setTSkillLevel] = useState("Open");
   const [tStatus, setTStatus] = useState("Upcoming");
-  const [tBannerUrl, setTBannerUrl] = useState("");  const [team1LogoFile, setTeam1LogoFile] = useState<File | null>(null);
+  const [tBannerUrl, setTBannerUrl] = useState("");
+  const [tFormat, setTFormat] = useState("Doubles");
+  const [tMaxSets, setTMaxSets] = useState("3");
+  const [tPointsToWin, setTPointsToWin] = useState("11");
+  const [team1LogoFile, setTeam1LogoFile] = useState<File | null>(null);
   const [team2LogoFile, setTeam2LogoFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState("");
@@ -111,12 +110,12 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!db) return;
     const unsubMatches = onValue(
-      dbRef(db, "matches"),
+      dbRef(db, "pickleball/matches"),
       (snapshot) => setMatches(snapshot.val() ?? {}),
       (error) => setMessage(`Error reading matches: ${error.message}`),
     );
     const unsubTournaments = onValue(
-      dbRef(db, "tournaments"),
+      dbRef(db, "pickleball/tournaments"),
       (snapshot) => setTournaments(snapshot.val() ?? {}),
       (error) => setMessage(`Error reading tournaments: ${error.message}`),
     );
@@ -183,7 +182,8 @@ export default function DashboardPage() {
 
     try {
       const { set } = await import("firebase/database");
-      await set(dbRef(requireDb(), `tournaments/${tId}`), {
+      const { requireDb } = await import("@/lib/firebasePickleball");
+      await set(dbRef(requireDb(), `pickleball/tournaments/${tId}`), {
         name: tournamentName,
         entryFee: tEntryFee,
         maxTeams: Number(tMaxTeams),
@@ -192,11 +192,15 @@ export default function DashboardPage() {
         skillLevel: tSkillLevel,
         status: tStatus,
         bannerUrl: tBannerUrl,
-        sport: "cricket",
+        sport: "pickleball",
         createdBy: user.uid,
         createdAt: Date.now(),
         teams: {},
-        settings: { maxPlayersPerTeam: 15, defaultOvers: 20 },
+        settings: { 
+          format: tFormat as "Singles" | "Doubles", 
+          maxSets: Number(tMaxSets), 
+          pointsToWin: Number(tPointsToWin) 
+        },
       });
       setTournamentName("");
       setTEntryFee("");
@@ -244,27 +248,37 @@ export default function DashboardPage() {
       const t1Roster = form.team1Roster.filter((p) => p.name.trim());
       const t2Roster = form.team2Roster.filter((p) => p.name.trim());
 
-      const match = buildNewMatch(
-        form.team1,
-        form.team2,
-        Number(form.overs),
-        form.toss as "team1" | "team2",
-        form.elected as "bat" | "field",
-        createdBy,
-        team1LogoUrl || undefined,
-        team2LogoUrl || undefined,
-        t1Roster,
-        t2Roster,
-        form.team1Color,
-        form.team2Color,
-      );
+      const isSingles = form.format === "Singles";
+      
+      const match: PickleballMatch = {
+        meta: {
+          team1: form.team1,
+          team2: form.team2,
+          ...((team1LogoUrl && !isSingles) ? { team1Logo: team1LogoUrl } : {}),
+          ...((team2LogoUrl && !isSingles) ? { team2Logo: team2LogoUrl } : {}),
+          team1Color: form.team1Color,
+          team2Color: form.team2Color,
+          team1Roster: isSingles ? [{ name: form.team1 }] : t1Roster,
+          team2Roster: isSingles ? [{ name: form.team2 }] : t2Roster,
+          status: "upcoming",
+          createdBy,
+          createdAt: Date.now(),
+          settings: {
+            format: form.format as "Singles" | "Doubles",
+            maxSets: form.maxSets,
+            pointsToWin: form.pointsToWin,
+          },
+        },
+        score: {
+          team1: { points: 0, sets: 0, playerPoints: {} },
+          team2: { points: 0, sets: 0, playerPoints: {} },
+        },
+        result: null,
+      };
 
-      if (form.team1Short) match.meta.team1Short = form.team1Short;
-      if (form.team2Short) match.meta.team2Short = form.team2Short;
-
-      await saveMatch(matchId, match);
+      await savePickleballMatch(matchId, match);
       setMessage(
-        `Match created. Open /match/${matchId}/score to start scoring.`,
+        `Match created. Open /pickleball/match/${matchId}/score to start scoring.`,
       );
     } catch (err: any) {
       setMessage(
@@ -275,18 +289,23 @@ export default function DashboardPage() {
     }
   }
 
-  function requireDb() {
-    if (!db) throw new Error("Firebase is not configured.");
-    return db;
-  }
-
   return (
     <AppShell>
       <section className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[26rem_1fr]">
         <aside className="rounded-lg border border-outline bg-surface p-4 shadow-sm h-fit">
+          <div className="mb-2">
+            <Link
+              href="/dashboard"
+              className="text-sm font-bold text-on-surface-variant hover:text-primary flex items-center gap-1 mb-4"
+            >
+              <ArrowLeft size={16} /> Back to sports
+            </Link>
+          </div>
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-black">Dashboard</h1>
+              <h1 className="text-2xl font-black text-primary">
+                🏓 Pickleball Dashboard
+              </h1>
               <p className="text-sm text-on-surface-variant">
                 {user ? user.displayName : "Firebase Google sign-in"}
               </p>
@@ -312,13 +331,13 @@ export default function DashboardPage() {
 
           <div className="mb-6 flex gap-2 border-b border-outline">
             <button
-              className={`pb-2 px-2 text-sm font-black border-b-2 ${activeTab === "matches" ? "border-slate-900 text-on-surface" : "border-transparent text-on-surface-variant hover:text-on-surface"}`}
+              className={`pb-2 px-2 text-sm font-black border-b-2 ${activeTab === "matches" ? "border-primary text-primary" : "border-transparent text-on-surface-variant hover:text-on-surface"}`}
               onClick={() => setActiveTab("matches")}
             >
               Matches
             </button>
             <button
-              className={`pb-2 px-2 text-sm font-black border-b-2 ${activeTab === "tournaments" ? "border-slate-900 text-on-surface" : "border-transparent text-on-surface-variant hover:text-on-surface"}`}
+              className={`pb-2 px-2 text-sm font-black border-b-2 ${activeTab === "tournaments" ? "border-primary text-primary" : "border-transparent text-on-surface-variant hover:text-on-surface"}`}
               onClick={() => setActiveTab("tournaments")}
             >
               Tournaments
@@ -336,105 +355,108 @@ export default function DashboardPage() {
                       setForm({ ...form, team1Color: e.target.value })
                     }
                     className="h-8 w-8 cursor-pointer rounded-md border-0 p-0"
-                    title="Team 1 Color"
+                    title={form.format === "Singles" ? "Player 1 Color" : "Team 1 Color"}
                   />
-                  <div className="flex flex-1 gap-2">
-                    <input
-                      className="w-full rounded-md border border-outline px-3 py-2 font-bold"
-                      value={form.team1}
-                      onChange={(event) =>
-                        setForm({ ...form, team1: event.target.value })
-                      }
-                      placeholder="Team 1 Name"
-                    />
-                    <input
-                      className="w-20 shrink-0 rounded-md border border-outline px-3 py-2 font-bold text-center uppercase"
-                      value={form.team1Short}
-                      onChange={(event) =>
-                        setForm({ ...form, team1Short: event.target.value.substring(0, 3).toUpperCase() })
-                      }
-                      placeholder="SHR"
-                      maxLength={3}
-                      title="3-letter Short Form for Logo"
-                    />
-                  </div>
-                </div>
-                <label className="mb-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-outline bg-surface px-3 py-2 text-sm text-on-surface-variant hover:bg-surface-dim">
-                  <Upload size={16} />
-                  {team1LogoFile ? team1LogoFile.name : "Upload Team 1 Logo"}
                   <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) =>
-                      setTeam1LogoFile(e.target.files?.[0] || null)
+                    className="w-full rounded-md border border-outline px-3 py-2 font-bold"
+                    value={form.team1}
+                    onChange={(event) =>
+                      setForm({ ...form, team1: event.target.value })
                     }
+                    placeholder={form.format === "Singles" ? "Player 1 Name" : "Home Team Name"}
                   />
-                </label>
-                <div className="space-y-2 mt-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-bold">
-                      Roster ({form.team1Roster.length})
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setForm({
-                          ...form,
-                          team1Roster: [
-                            ...form.team1Roster,
-                            { name: "", role: "Player" },
-                          ],
-                        })
-                      }
-                      className="text-xs font-bold text-primary hover:underline"
-                    >
-                      + Add Player
-                    </button>
-                  </div>
-                  {form.team1Roster.map((player, idx) => (
-                    <div key={idx} className="flex gap-2">
-                      <input
-                        required
-                        className="w-full rounded-md border border-outline px-3 py-2 text-sm"
-                        value={player.name}
-                        onChange={(e) => {
-                          const newRoster = [...form.team1Roster];
-                          newRoster[idx].name = e.target.value;
-                          setForm({ ...form, team1Roster: newRoster });
-                        }}
-                        placeholder={`Player ${idx + 1}`}
-                      />
-                      <select
-                        className="rounded-md border border-outline px-2 py-2 text-sm"
-                        value={player.role}
-                        onChange={(e) => {
-                          const newRoster = [...form.team1Roster];
-                          newRoster[idx].role = e.target
-                            .value as Player["role"];
-                          setForm({ ...form, team1Roster: newRoster });
-                        }}
-                      >
-                        <option value="Player">Player</option>
-                        <option value="Batsman">Batsman</option>
-                        <option value="Bowler">Bowler</option>
-                        <option value="All-Rounder">All-Rounder</option>
-                        <option value="Wicket-Keeper">Wicket-Keeper</option>
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newRoster = [...form.team1Roster];
-                          newRoster.splice(idx, 1);
-                          setForm({ ...form, team1Roster: newRoster });
-                        }}
-                        className="text-on-surface-variant hover:text-primary"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))}
                 </div>
+                {form.format !== "Singles" && (
+                  <label className="mb-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-outline bg-surface px-3 py-2 text-sm text-on-surface-variant hover:bg-surface-dim">
+                    <Upload size={16} />
+                    {team1LogoFile ? team1LogoFile.name : "Upload Home Team Logo"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) =>
+                        setTeam1LogoFile(e.target.files?.[0] || null)
+                      }
+                    />
+                  </label>
+                )}
+                
+                <div className="grid grid-cols-3 gap-2 mt-4">
+                  <label className="text-sm font-bold block">Format
+                    <select className="mt-1 w-full rounded-md border border-outline px-3 py-2" value={form.format} onChange={e => setForm({...form, format: e.target.value})}>
+                      <option value="Singles">Singles</option>
+                      <option value="Doubles">Doubles</option>
+                    </select>
+                  </label>
+                  <label className="text-sm font-bold block">Sets
+                    <select className="mt-1 w-full rounded-md border border-outline px-3 py-2" value={form.maxSets} onChange={e => setForm({...form, maxSets: Number(e.target.value)})}>
+                      <option value="1">1</option>
+                      <option value="3">Best of 3</option>
+                      <option value="5">Best of 5</option>
+                    </select>
+                  </label>
+                  <label className="text-sm font-bold block">Win Pts
+                    <select className="mt-1 w-full rounded-md border border-outline px-3 py-2" value={form.pointsToWin} onChange={e => setForm({...form, pointsToWin: Number(e.target.value)})}>
+                      <option value="11">11</option>
+                      <option value="15">15</option>
+                      <option value="21">21</option>
+                    </select>
+                  </label>
+                </div>
+
+                {form.format !== "Singles" && (
+                  <div className="space-y-2 mt-4 border-t border-outline pt-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-bold text-on-surface">
+                        Roster ({form.team1Roster.length})
+                      </label>
+                      {form.team1Roster.length < 2 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm({
+                              ...form,
+                              team1Roster: [
+                                ...form.team1Roster,
+                                { name: "" },
+                              ],
+                            })
+                          }
+                          className="text-xs font-bold text-primary hover:underline"
+                        >
+                          + Add Player
+                        </button>
+                      )}
+                    </div>
+                    {form.team1Roster.map((player, idx) => (
+                      <div key={idx} className="flex gap-2">
+                        <input
+                          required
+                          className="w-full rounded-md border border-outline px-3 py-2 text-sm"
+                          value={player.name}
+                          onChange={(e) => {
+                            const newRoster = [...form.team1Roster];
+                            newRoster[idx].name = e.target.value;
+                            setForm({ ...form, team1Roster: newRoster });
+                          }}
+                          placeholder={`Player ${idx + 1}`}
+                        />
+                        <span className="rounded-md border border-outline bg-surface-dim px-3 py-2 text-sm text-on-surface-variant flex items-center justify-center">Player</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newRoster = [...form.team1Roster];
+                            newRoster.splice(idx, 1);
+                            setForm({ ...form, team1Roster: newRoster });
+                          }}
+                          className="text-on-surface-variant hover:text-primary"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="rounded-lg border border-outline-variant bg-surface-dim p-3">
@@ -446,129 +468,92 @@ export default function DashboardPage() {
                       setForm({ ...form, team2Color: e.target.value })
                     }
                     className="h-8 w-8 cursor-pointer rounded-md border-0 p-0"
-                    title="Team 2 Color"
+                    title={form.format === "Singles" ? "Player 2 Color" : "Team 2 Color"}
                   />
-                  <div className="flex flex-1 gap-2">
-                    <input
-                      className="w-full rounded-md border border-outline px-3 py-2 font-bold"
-                      value={form.team2}
-                      onChange={(event) =>
-                        setForm({ ...form, team2: event.target.value })
-                      }
-                      placeholder="Team 2 Name"
-                    />
-                    <input
-                      className="w-20 shrink-0 rounded-md border border-outline px-3 py-2 font-bold text-center uppercase"
-                      value={form.team2Short}
-                      onChange={(event) =>
-                        setForm({ ...form, team2Short: event.target.value.substring(0, 3).toUpperCase() })
-                      }
-                      placeholder="SHR"
-                      maxLength={3}
-                      title="3-letter Short Form for Logo"
-                    />
-                  </div>
-                </div>
-                <label className="mb-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-outline bg-surface px-3 py-2 text-sm text-on-surface-variant hover:bg-surface-dim">
-                  <Upload size={16} />
-                  {team2LogoFile ? team2LogoFile.name : "Upload Team 2 Logo"}
                   <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) =>
-                      setTeam2LogoFile(e.target.files?.[0] || null)
-                    }
-                  />
-                </label>
-                <div className="space-y-2 mt-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-bold">
-                      Roster ({form.team2Roster.length})
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setForm({
-                          ...form,
-                          team2Roster: [
-                            ...form.team2Roster,
-                            { name: "", role: "Player" },
-                          ],
-                        })
-                      }
-                      className="text-xs font-bold text-primary hover:underline"
-                    >
-                      + Add Player
-                    </button>
-                  </div>
-                  {form.team2Roster.map((player, idx) => (
-                    <div key={idx} className="flex gap-2">
-                      <input
-                        required
-                        className="w-full rounded-md border border-outline px-3 py-2 text-sm"
-                        value={player.name}
-                        onChange={(e) => {
-                          const newRoster = [...form.team2Roster];
-                          newRoster[idx].name = e.target.value;
-                          setForm({ ...form, team2Roster: newRoster });
-                        }}
-                        placeholder={`Player ${idx + 1}`}
-                      />
-                      <select
-                        className="rounded-md border border-outline px-2 py-2 text-sm"
-                        value={player.role}
-                        onChange={(e) => {
-                          const newRoster = [...form.team2Roster];
-                          newRoster[idx].role = e.target
-                            .value as Player["role"];
-                          setForm({ ...form, team2Roster: newRoster });
-                        }}
-                      >
-                        <option value="Player">Player</option>
-                        <option value="Batsman">Batsman</option>
-                        <option value="Bowler">Bowler</option>
-                        <option value="All-Rounder">All-Rounder</option>
-                        <option value="Wicket-Keeper">Wicket-Keeper</option>
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newRoster = [...form.team2Roster];
-                          newRoster.splice(idx, 1);
-                          setForm({ ...form, team2Roster: newRoster });
-                        }}
-                        className="text-on-surface-variant hover:text-primary"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3">
-                <label className="block text-sm font-bold">
-                  Overs
-                  <input
-                    className="mt-1 w-full rounded-md border border-outline px-3 py-2"
-                    min={1}
-                    max={50}
-                    type="number"
-                    value={form.overs}
+                    className="w-full rounded-md border border-outline px-3 py-2 font-bold"
+                    value={form.team2}
                     onChange={(event) =>
-                      setForm({ ...form, overs: Number(event.target.value) })
+                      setForm({ ...form, team2: event.target.value })
                     }
+                    placeholder={form.format === "Singles" ? "Player 2 Name" : "Away Team Name"}
                   />
-                </label>
+                </div>
+                {form.format !== "Singles" && (
+                  <label className="mb-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-outline bg-surface px-3 py-2 text-sm text-on-surface-variant hover:bg-surface-dim">
+                    <Upload size={16} />
+                    {team2LogoFile ? team2LogoFile.name : "Upload Away Team Logo"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) =>
+                        setTeam2LogoFile(e.target.files?.[0] || null)
+                      }
+                    />
+                  </label>
+                )}
+                {form.format !== "Singles" && (
+                  <div className="space-y-2 mt-4 border-t border-outline pt-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-bold text-on-surface">
+                        Roster ({form.team2Roster.length})
+                      </label>
+                      {form.team2Roster.length < 2 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm({
+                              ...form,
+                              team2Roster: [
+                                ...form.team2Roster,
+                                { name: "" },
+                              ],
+                            })
+                          }
+                          className="text-xs font-bold text-primary hover:underline"
+                        >
+                          + Add Player
+                        </button>
+                      )}
+                    </div>
+                    {form.team2Roster.map((player, idx) => (
+                      <div key={idx} className="flex gap-2">
+                        <input
+                          required
+                          className="w-full rounded-md border border-outline px-3 py-2 text-sm"
+                          value={player.name}
+                          onChange={(e) => {
+                            const newRoster = [...form.team2Roster];
+                            newRoster[idx].name = e.target.value;
+                            setForm({ ...form, team2Roster: newRoster });
+                          }}
+                          placeholder={`Player ${idx + 1}`}
+                        />
+                        <span className="rounded-md border border-outline bg-surface-dim px-3 py-2 text-sm text-on-surface-variant flex items-center justify-center">Player</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newRoster = [...form.team2Roster];
+                            newRoster.splice(idx, 1);
+                            setForm({ ...form, team2Roster: newRoster });
+                          }}
+                          className="text-on-surface-variant hover:text-primary"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <button
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-pitch px-4 py-3 font-black text-white disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 font-black text-white hover:bg-primary-container disabled:opacity-50"
                 disabled={!isFirebaseConfigured || !user || isUploading}
               >
                 <Plus size={18} />
-                {isUploading ? "Creating..." : "Create Match"}
+                {isUploading ? "Creating..." : "Create Pickleball Match"}
               </button>
             </form>
           ) : (
@@ -576,7 +561,7 @@ export default function DashboardPage() {
               <div className="rounded-lg border border-outline-variant bg-surface-dim p-3 space-y-3">
                 <label className="block text-sm font-bold">
                   Tournament Name
-                  <input required className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal" value={tournamentName} onChange={(e) => setTournamentName(e.target.value)} placeholder="e.g. Summer Cup 2026" />
+                  <input required className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal text-on-surface" value={tournamentName} onChange={(e) => setTournamentName(e.target.value)} placeholder="e.g. Winter Hoops 2026" />
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -592,21 +577,21 @@ export default function DashboardPage() {
                         className="block w-full rounded-md border border-outline py-2 pl-7 pr-3 text-on-surface font-normal" 
                         value={tEntryFee} 
                         onChange={(e) => setTEntryFee(e.target.value)} 
-                        placeholder="e.g. 5000" 
+                        placeholder="e.g. 1500" 
                       />
                     </div>
                   </div>
                   <label className="block text-sm font-bold">Max Teams
-                    <input type="number" className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal" value={tMaxTeams} onChange={(e) => setTMaxTeams(e.target.value)} />
+                    <input type="number" className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal text-on-surface" value={tMaxTeams} onChange={(e) => setTMaxTeams(e.target.value)} />
                   </label>
                   <label className="block text-sm font-bold">Start Date
-                    <input className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal" value={tStartDate} onChange={(e) => setTStartDate(e.target.value)} placeholder="e.g. Oct 15, 2026" />
+                    <input className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal text-on-surface" value={tStartDate} onChange={(e) => setTStartDate(e.target.value)} placeholder="e.g. Nov 01, 2026" />
                   </label>
                   <label className="block text-sm font-bold">Location
-                    <input className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal" value={tLocation} onChange={(e) => setTLocation(e.target.value)} placeholder="e.g. Downtown Arena" />
+                    <input className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal text-on-surface" value={tLocation} onChange={(e) => setTLocation(e.target.value)} placeholder="e.g. Westside Courts" />
                   </label>
                   <label className="block text-sm font-bold">Skill Level
-                    <select className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal" value={tSkillLevel} onChange={(e) => setTSkillLevel(e.target.value)}>
+                    <select className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal text-on-surface" value={tSkillLevel} onChange={(e) => setTSkillLevel(e.target.value)}>
                       <option value="Pro">Pro</option>
                       <option value="Amateur">Amateur</option>
                       <option value="Open">Open</option>
@@ -614,20 +599,40 @@ export default function DashboardPage() {
                     </select>
                   </label>
                   <label className="block text-sm font-bold">Status
-                    <select className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal" value={tStatus} onChange={(e) => setTStatus(e.target.value)}>
+                    <select className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal text-on-surface" value={tStatus} onChange={(e) => setTStatus(e.target.value)}>
                       <option value="Registering">Registering</option>
                       <option value="Upcoming">Upcoming</option>
                       <option value="Ongoing">Ongoing</option>
                       <option value="Completed">Completed</option>
                     </select>
                   </label>
+                  <label className="block text-sm font-bold">Format
+                    <select className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal text-on-surface" value={tFormat} onChange={(e) => setTFormat(e.target.value)}>
+                      <option value="Singles">Singles</option>
+                      <option value="Doubles">Doubles</option>
+                    </select>
+                  </label>
+                  <label className="block text-sm font-bold">Max Sets
+                    <select className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal text-on-surface" value={tMaxSets} onChange={(e) => setTMaxSets(e.target.value)}>
+                      <option value="1">1</option>
+                      <option value="3">Best of 3</option>
+                      <option value="5">Best of 5</option>
+                    </select>
+                  </label>
+                  <label className="block text-sm font-bold">Points To Win
+                    <select className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal text-on-surface" value={tPointsToWin} onChange={(e) => setTPointsToWin(e.target.value)}>
+                      <option value="11">11</option>
+                      <option value="15">15</option>
+                      <option value="21">21</option>
+                    </select>
+                  </label>
                 </div>
                 <label className="block text-sm font-bold">Banner Image URL
-                  <input className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal" value={tBannerUrl} onChange={(e) => setTBannerUrl(e.target.value)} placeholder="https://images.unsplash.com/..." />
+                  <input className="mt-1 w-full rounded-md border border-outline px-3 py-2 font-normal text-on-surface" value={tBannerUrl} onChange={(e) => setTBannerUrl(e.target.value)} placeholder="https://images.unsplash.com/..." />
                 </label>
               </div>
               <button
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-pitch px-4 py-3 font-black text-white disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary hover:bg-primary-container px-4 py-3 font-black text-white disabled:opacity-50"
                 disabled={
                   !isFirebaseConfigured ||
                   !user ||
@@ -636,7 +641,7 @@ export default function DashboardPage() {
                 }
               >
                 <Plus size={18} />
-                {isUploading ? "Creating..." : "Create Tournament"}
+                {isUploading ? "Creating..." : "Create Pickleball Tournament"}
               </button>
             </form>
           )}
@@ -651,7 +656,7 @@ export default function DashboardPage() {
           {activeTab === "matches" ? (
             <>
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-black">Matches</h2>
+                <h2 className="text-xl font-black">Pickleball Matches</h2>
                 <span className="text-sm font-bold text-on-surface-variant">
                   {visibleMatches.length} total
                 </span>
@@ -674,7 +679,7 @@ export default function DashboardPage() {
                               />
                             ) : (
                               <div
-                                className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-surface bg-surface-variant text-xs font-black shadow-sm"
+                                className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-surface bg-surface-variant text-xs font-black shadow-sm text-white"
                                 style={{
                                   backgroundColor: match.meta.team1Color,
                                 }}
@@ -690,7 +695,7 @@ export default function DashboardPage() {
                               />
                             ) : (
                               <div
-                                className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-surface bg-surface-variant text-xs font-black shadow-sm"
+                                className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-surface bg-surface-variant text-xs font-black shadow-sm text-white"
                                 style={{
                                   backgroundColor: match.meta.team2Color,
                                 }}
@@ -701,11 +706,14 @@ export default function DashboardPage() {
                           </div>
                           <div>
                             <h3 className="text-lg font-black leading-tight">
-                              {match.meta.team1} vs {match.meta.team2}
+                              {match.meta.team1}{" "}
+                              <span className="text-on-surface-variant font-medium">
+                                vs
+                              </span>{" "}
+                              {match.meta.team2}
                             </h3>
                             <p className="text-sm text-on-surface-variant">
-                              {match.meta.overs} overs ·{" "}
-                              <span className="capitalize">
+                              <span className="capitalize font-bold text-primary">
                                 {match.meta.status}
                               </span>
                             </p>
@@ -714,25 +722,17 @@ export default function DashboardPage() {
                         <div className="flex flex-wrap gap-2">
                           <Link
                             className="flex items-center gap-1 rounded-md bg-inverse-surface px-3 py-2 text-sm font-black text-white"
-                            href={`/match/${id}/score`}
+                            href={`/pickleball/match/${id}/score`}
                           >
-                            <Smartphone size={16} /> {match.meta.status === "completed" ? "Edit Stats" : "Score"}
+                            <Smartphone size={16} /> Score
                           </Link>
                           {match.meta.status !== "completed" && (
-                            <>
-                              <Link
-                                className="flex items-center gap-1 rounded-md border border-outline px-3 py-2 text-sm font-black"
-                                href={`/match/${id}/live`}
-                              >
-                                <Eye size={16} /> Live
-                              </Link>
-                              <Link
-                                className="flex items-center gap-1 rounded-md border border-outline px-3 py-2 text-sm font-black"
-                                href={`/match/${id}/overlay`}
-                              >
-                                <MonitorUp size={16} /> Overlay
-                              </Link>
-                            </>
+                            <Link
+                              className="flex items-center gap-1 rounded-md border border-outline px-3 py-2 text-sm font-black"
+                              href={`/pickleball/match/${id}/overlay`}
+                            >
+                              <MonitorUp size={16} /> Overlay
+                            </Link>
                           )}
                           <button
                             onClick={() => {
@@ -741,9 +741,9 @@ export default function DashboardPage() {
                                   "Are you sure you want to delete this match?",
                                 )
                               ) {
-                                import("@/lib/firebaseMatches").then(
-                                  ({ deleteMatch }) =>
-                                    deleteMatch(id)
+                                import("@/lib/firebasePickleball").then(
+                                  ({ deletePickleballMatch }) =>
+                                    deletePickleballMatch(id)
                                       .then(() => setMessage("Match deleted."))
                                       .catch((e) =>
                                         setMessage(`Error: ${e.message}`),
@@ -761,8 +761,7 @@ export default function DashboardPage() {
                   ))
                 ) : (
                   <div className="rounded-lg border border-dashed border-outline bg-surface p-8 text-center text-on-surface-variant">
-                    Created matches will appear here after Firebase is
-                    connected.
+                    Created pickleball matches will appear here.
                   </div>
                 )}
               </div>
@@ -770,7 +769,7 @@ export default function DashboardPage() {
           ) : (
             <>
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-black">Tournaments</h2>
+                <h2 className="text-xl font-black">Pickleball Tournaments</h2>
                 <span className="text-sm font-bold text-on-surface-variant">
                   {visibleTournaments.length} total
                 </span>
@@ -782,7 +781,10 @@ export default function DashboardPage() {
                       key={id}
                       className="rounded-lg border border-outline bg-surface p-4 shadow-sm hover:border-outline transition-colors"
                     >
-                      <Link href={`/tournament/${id}`} className="block">
+                      <Link
+                        href={`/pickleball/tournament/${id}`}
+                        className="block"
+                      >
                         <div className="flex items-center justify-between">
                           <div>
                             <h3 className="text-lg font-black">{t.name}</h3>
@@ -790,7 +792,7 @@ export default function DashboardPage() {
                               {Object.keys(t.teams || {}).length} teams
                             </p>
                           </div>
-                          <div className="text-primary font-bold text-sm bg-surface-variant px-3 py-1.5 rounded-full">
+                          <div className="text-white font-bold text-sm bg-primary px-3 py-1.5 rounded-full">
                             Manage &rarr;
                           </div>
                         </div>
@@ -799,7 +801,7 @@ export default function DashboardPage() {
                   ))
                 ) : (
                   <div className="rounded-lg border border-dashed border-outline bg-surface p-8 text-center text-on-surface-variant">
-                    Your tournaments will appear here.
+                    Your pickleball tournaments will appear here.
                   </div>
                 )}
               </div>

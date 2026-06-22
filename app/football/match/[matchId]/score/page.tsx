@@ -114,21 +114,16 @@ export default function FootballScorePage({
     setGoalModalOpen(false);
   };
 
-  if (!match) {
+  if (!match || loading) {
     return (
       <AppShell>
-        <div className="flex min-h-[50vh] items-center justify-center p-8 text-on-surface-variant font-medium">
-          Loading match...
+        <div className="min-h-[85vh] flex items-center justify-center bg-inverse-surface">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-surface-bright font-black uppercase tracking-widest text-xs animate-pulse">Loading Match Data...</p>
+          </div>
         </div>
       </AppShell>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-inverse-surface">
-        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-      </div>
     );
   }
 

@@ -248,23 +248,26 @@ export default function ScorerPage() {
     }
   }
 
-  if (!match || !innings) {
+  if (loading || (!match && !error) || (!innings && !error)) {
     return (
       <AppShell>
-        <div className="mx-auto max-w-3xl px-4 py-10">
-          <div className="rounded-lg border border-outline bg-surface p-8 text-center text-on-surface-variant">
-            {error || "Loading match..."}
+        <div className="min-h-[85vh] flex items-center justify-center bg-inverse-surface">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-surface-bright font-black uppercase tracking-widest text-xs animate-pulse">Loading Match Data...</p>
           </div>
         </div>
       </AppShell>
     );
   }
 
-  if (loading) {
+  if ((!match || !innings) && error) {
     return (
       <AppShell>
-        <div className="flex h-screen items-center justify-center">
-          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <div className="mx-auto max-w-3xl px-4 py-10">
+          <div className="rounded-lg border border-outline bg-surface p-8 text-center text-rose-500 font-bold">
+            {error}
+          </div>
         </div>
       </AppShell>
     );

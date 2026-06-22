@@ -32,6 +32,9 @@ export default function ProfilePage() {
   const [battingStyle, setBattingStyle] = useState("");
   const [bowlingStyle, setBowlingStyle] = useState("");
   const [cricketSkill, setCricketSkill] = useState("");
+  const [pickleballSkill, setPickleballSkill] = useState("");
+  const [paddleHand, setPaddleHand] = useState("");
+  const [preferredSide, setPreferredSide] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [rawPhotoUrl, setRawPhotoUrl] = useState<string | null>(null);
@@ -42,6 +45,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [friendsProfiles, setFriendsProfiles] = useState<any[]>([]);
 
   useEffect(() => {
     if (!auth) {
@@ -75,9 +79,28 @@ export default function ProfilePage() {
               setBattingStyle(data.battingStyle || "");
               setBowlingStyle(data.bowlingStyle || "");
               setCricketSkill(data.cricketSkill || "");
+              setPickleballSkill(data.pickleballSkill || "");
+              setPaddleHand(data.paddleHand || "");
+              setPreferredSide(data.preferredSide || "");
             }
+
+            // Fetch friends
+            const { collection, query, where, getDocs } = await import("firebase/firestore");
+            const friendQ = query(collection(firestore, "friendships"), where("participants", "array-contains", u.uid));
+            const friendSnap = await getDocs(friendQ);
+            const friendUids = friendSnap.docs.map(d => {
+              const p = d.data().participants as string[];
+              return p.find(id => id !== u.uid)!;
+            });
+            
+            if (friendUids.length > 0) {
+              const { fetchUsersProfiles } = await import("@/lib/chatUtils");
+              const profiles = await fetchUsersProfiles(friendUids);
+              setFriendsProfiles(Object.values(profiles));
+            }
+
           } catch (err) {
-            console.warn("Could not fetch user profile details.");
+            console.warn("Could not fetch user profile details.", err);
             setRole("user");
           }
         }
@@ -201,6 +224,9 @@ export default function ProfilePage() {
         battingStyle,
         bowlingStyle,
         cricketSkill,
+        pickleballSkill,
+        paddleHand,
+        preferredSide,
         photoURL: finalPhotoUrl,
         ...(username !== originalUsername ? { username: username.toLowerCase(), usernameEdits: finalUsernameEdits } : {})
       });
@@ -579,6 +605,78 @@ export default function ProfilePage() {
               </>
             )}
 
+            {gamePlayed.includes("Pickleball") && (
+              <>
+                <div className="md:col-span-2 mt-4 pt-6 border-t border-outline-variant">
+                  <h3 className="text-lg font-black text-on-surface">Pickleball Attributes</h3>
+                </div>
+                
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-on-surface opacity-70">
+                    Age (Years)
+                  </label>
+                  <input
+                    disabled
+                    type="text"
+                    value={calculatedAge}
+                    className="w-full rounded-md border border-outline bg-surface-variant text-on-surface-variant px-3 py-2 outline-none opacity-70 cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-on-surface">
+                    Skill Level (Rating)
+                  </label>
+                  <select
+                    value={pickleballSkill}
+                    onChange={(e) => setPickleballSkill(e.target.value)}
+                    className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Select Rating</option>
+                    <option value="2.0 - Beginner">2.0 - Beginner</option>
+                    <option value="2.5 - Novice">2.5 - Novice</option>
+                    <option value="3.0 - Intermediate">3.0 - Intermediate</option>
+                    <option value="3.5 - Advanced Intermediate">3.5 - Advanced Intermediate</option>
+                    <option value="4.0 - Advanced">4.0 - Advanced</option>
+                    <option value="4.5 - Expert">4.5 - Expert</option>
+                    <option value="5.0+ - Pro">5.0+ - Pro</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-on-surface">
+                    Paddle Hand
+                  </label>
+                  <select
+                    value={paddleHand}
+                    onChange={(e) => setPaddleHand(e.target.value)}
+                    className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Select Hand</option>
+                    <option value="Right">Right</option>
+                    <option value="Left">Left</option>
+                    <option value="Ambidextrous">Ambidextrous</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-on-surface">
+                    Preferred Side (Doubles)
+                  </label>
+                  <select
+                    value={preferredSide}
+                    onChange={(e) => setPreferredSide(e.target.value)}
+                    className="w-full rounded-md border border-outline bg-surface-dim text-on-surface px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Select Side</option>
+                    <option value="Left Side">Left Side</option>
+                    <option value="Right Side">Right Side</option>
+                    <option value="Flexible">Flexible</option>
+                  </select>
+                </div>
+              </>
+            )}
+
             <div className="md:col-span-2 space-y-4">
               {message && (
                 <p
@@ -599,6 +697,35 @@ export default function ProfilePage() {
             </div>
           </form>
         </div>
+
+        {/* Friend List */}
+        <div className="mt-8 rounded-2xl bg-surface border border-outline shadow-sm p-6 md:p-10 mb-20">
+          <h2 className="font-display text-2xl md:text-3xl font-black uppercase tracking-tighter text-on-surface mb-6 border-b border-outline pb-4">
+            My Friends
+          </h2>
+          {friendsProfiles.length === 0 ? (
+            <p className="text-on-surface-variant font-medium">You don&apos;t have any friends yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {friendsProfiles.map(friend => (
+                <div key={friend.uid} className="flex items-center gap-4 bg-surface-dim p-4 rounded-xl border border-outline">
+                  {friend.photoURL ? (
+                    <img src={friend.photoURL} alt={friend.name} className="w-12 h-12 rounded-full object-cover shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center font-bold text-white shrink-0">
+                      {friend.name?.[0]?.toUpperCase()}
+                    </div>
+                  )}
+                  <div className="overflow-hidden">
+                    <p className="font-bold text-on-surface truncate">{friend.name}</p>
+                    <p className="text-xs text-on-surface-variant truncate">@{friend.username}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
       </div>
     </AppShell>
   );

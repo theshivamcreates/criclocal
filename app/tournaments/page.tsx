@@ -12,6 +12,9 @@ import Link from "next/link";
 export default function TournamentsPage() {
   const [cricketTournaments, setCricketTournaments] = useState<Record<string, any>>({});
   const [footballTournaments, setFootballTournaments] = useState<Record<string, any>>({});
+  const [pickleballTournaments, setPickleballTournaments] = useState<Record<string, any>>({});
+  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   
   const [filterSport, setFilterSport] = useState("ALL SPORTS");
   const [filterSkill, setFilterSkill] = useState("ALL SKILL LEVELS");
@@ -21,17 +24,30 @@ export default function TournamentsPage() {
   useEffect(() => {
     if (!db) return;
     
+    let cLoaded = false, fLoaded = false, pLoaded = false;
+    const checkLoaded = () => {
+      if (cLoaded && fLoaded && pLoaded) setIsDataLoading(false);
+    };
+
     const unsubCricket = onValue(dbRef(db, "tournaments"), (snapshot) => {
       setCricketTournaments(snapshot.val() ?? {});
+      cLoaded = true; checkLoaded();
     });
     
     const unsubFootball = onValue(dbRef(db, "football/tournaments"), (snapshot) => {
       setFootballTournaments(snapshot.val() ?? {});
+      fLoaded = true; checkLoaded();
+    });
+
+    const unsubPickleball = onValue(dbRef(db, "pickleball/tournaments"), (snapshot) => {
+      setPickleballTournaments(snapshot.val() ?? {});
+      pLoaded = true; checkLoaded();
     });
 
     return () => {
       unsubCricket();
       unsubFootball();
+      unsubPickleball();
     };
   }, []);
 
@@ -55,6 +71,7 @@ export default function TournamentsPage() {
           console.error("Error fetching user sports:", err);
         }
       }
+      setIsAuthLoading(false);
     });
     return () => unsubAuth();
   }, []);
@@ -62,8 +79,9 @@ export default function TournamentsPage() {
   const allTournaments = useMemo(() => {
     const cList = Object.entries(cricketTournaments).map(([id, t]) => ({ id, ...t, sport: "cricket" }));
     const fList = Object.entries(footballTournaments).map(([id, t]) => ({ id, ...t, sport: "football" }));
+    const pList = Object.entries(pickleballTournaments).map(([id, t]) => ({ id, ...t, sport: "pickleball" }));
     
-    let combined = [...cList, ...fList];
+    let combined = [...cList, ...fList, ...pList];
 
     // Filters
     if (filterSport !== "ALL SPORTS") {
@@ -98,7 +116,20 @@ export default function TournamentsPage() {
     });
 
     return combined;
-  }, [cricketTournaments, footballTournaments, filterSport, filterSkill, filterStatus, sortBy]);
+  }, [cricketTournaments, footballTournaments, pickleballTournaments, filterSport, filterSkill, filterStatus, sortBy]);
+
+  if (isDataLoading || isAuthLoading) {
+    return (
+      <AppShell>
+        <div className="min-h-[85vh] flex items-center justify-center bg-background">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-surface-bright font-black uppercase tracking-widest text-xs animate-pulse">Loading Tournaments...</p>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
@@ -127,6 +158,7 @@ export default function TournamentsPage() {
                 <option value="ALL SPORTS">All Sports</option>
                 <option value="CRICKET">Cricket</option>
                 <option value="FOOTBALL">Football</option>
+                <option value="PICKLEBALL">Pickleball</option>
               </select>
               
               <select 

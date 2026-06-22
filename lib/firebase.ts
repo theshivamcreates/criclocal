@@ -28,4 +28,4 @@ export const app: FirebaseApp | null = isFirebaseConfigured
 export const db = (app ? getDatabase(app) : null) as unknown as Database;
 export const auth: Auth | null = app ? getAuth(app) : null;
 export const storage: FirebaseStorage | null = app ? getStorage(app) : null;
-export const firestore: Firestore | null = app ? getFirestore(app) : null;
+export const firestore = (app ? getFirestore(app) : null) as unknown as Firestore;

@@ -98,10 +98,10 @@ export default function FootballOverlayPage({
               />
             ) : (
               <div
-                className="h-[90%] aspect-square rounded-full flex items-center justify-center text-white font-black text-sm border-2"
+                className="h-[90%] w-[90%] rounded-full flex items-center justify-center text-white font-black text-sm border-2 px-2 text-center overflow-hidden break-all leading-none"
                 style={{ borderColor: match.meta.team1Color || "#fff" }}
               >
-                {match.meta.team1.substring(0, 3).toUpperCase()}
+                {match.meta.team1.toUpperCase()}
               </div>
             )}
           </div>
@@ -115,10 +115,10 @@ export default function FootballOverlayPage({
               />
             ) : (
               <div
-                className="h-[90%] aspect-square rounded-full flex items-center justify-center text-white font-black text-sm border-2"
+                className="h-[90%] w-[90%] rounded-full flex items-center justify-center text-white font-black text-sm border-2 px-2 text-center overflow-hidden break-all leading-none"
                 style={{ borderColor: match.meta.team2Color || "#fff" }}
               >
-                {match.meta.team2.substring(0, 3).toUpperCase()}
+                {match.meta.team2.toUpperCase()}
               </div>
             )}
           </div>

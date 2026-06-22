@@ -26,6 +26,20 @@
         }
       }
     },
+    "pickleball": {
+      "matches": {
+        ".read": true,
+        "$matchId": {
+          ".write": "auth != null"
+        }
+      },
+      "tournaments": {
+        ".read": true,
+        "$tournId": {
+          ".write": "auth != null"
+        }
+      }
+    },
     "users": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",

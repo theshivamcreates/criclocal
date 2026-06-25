@@ -124,7 +124,7 @@ export default function PublicTournamentPage({
     : [];
 
   const userPendingPaymentTeamId = auth?.currentUser?.uid
-    ? teamList.find(t => (t as any).pendingPaymentFrom === auth.currentUser.uid)?.id
+    ? teamList.find(t => (t as any).pendingPaymentFrom === auth?.currentUser?.uid)?.id
     : undefined;
   const payForTeamKey = urlPayForTeamKey || userPendingPaymentTeamId;
 

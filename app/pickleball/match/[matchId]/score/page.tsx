@@ -56,6 +56,7 @@ export default function PickleballScorePage({
         type: "point",
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         scorerName: match.meta[team],
+        setNumber: match.score.team1.sets + match.score.team2.sets + 1,
       });
     }
   };
@@ -68,6 +69,7 @@ export default function PickleballScorePage({
         type: "point",
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         scorerName: playerName,
+        setNumber: match.score.team1.sets + match.score.team2.sets + 1,
       });
     }
   };
@@ -329,7 +331,7 @@ export default function PickleballScorePage({
               {/* Team 1 Points */}
               <div className="flex flex-col w-full items-center">
                 <div className="text-xs font-black text-on-surface-variant uppercase tracking-widest mb-2">Points</div>
-                <div className="text-6xl font-black text-on-surface w-20 text-center text-primary mb-4">
+                <div className="text-6xl font-black w-20 text-center text-primary mb-4">
                   {match.score.team1.points}
                 </div>
                 <div className="flex items-center justify-center gap-2 w-full">
@@ -424,7 +426,7 @@ export default function PickleballScorePage({
               {/* Team 2 Points */}
               <div className="flex flex-col w-full items-center">
                 <div className="text-xs font-black text-on-surface-variant uppercase tracking-widest mb-2">Points</div>
-                <div className="text-6xl font-black text-on-surface w-20 text-center text-primary mb-4">
+                <div className="text-6xl font-black w-20 text-center text-primary mb-4">
                   {match.score.team2.points}
                 </div>
                 <div className="flex items-center justify-center gap-2 w-full">
@@ -553,7 +555,7 @@ export default function PickleballScorePage({
                       <img src={match.meta.overlayLogo} className="h-full object-contain" alt="Overlay Logo" />
                     </div>
                     <button
-                      onClick={() => updatePickleballMatchMeta(matchId, { overlayLogo: null })}
+                      onClick={() => updatePickleballMatchMeta(matchId, { overlayLogo: "" })}
                       className="text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors"
                     >
                       Remove Logo

@@ -275,6 +275,8 @@ export default function ScorerPage() {
 
   if (!isAdmin) return null;
 
+  if (!match || !innings) return null;
+
   return (
     <AppShell>
       <datalist id="batting-team-roster">

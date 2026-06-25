@@ -58,7 +58,7 @@ export default function PublicTournamentPage({
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isParticipating, setIsParticipating] = useState(false);
   const searchParams = useSearchParams();
-  const payForTeamKey = searchParams.get("payForTeam");
+  const urlPayForTeamKey = searchParams.get("payForTeam");
 
   useEffect(() => {
     // Determine the Firebase DB path based on the sport parameter
@@ -122,6 +122,9 @@ export default function PublicTournamentPage({
         id: k,
       }))
     : [];
+
+  const userPendingPaymentTeamId = teamList.find(t => (t as any).pendingPaymentFrom === auth?.currentUser?.uid)?.id;
+  const payForTeamKey = urlPayForTeamKey || userPendingPaymentTeamId;
 
   const isSingles = tournament?.sport === "pickleball" && tournament?.settings?.format === "Singles";
 
@@ -315,7 +318,9 @@ export default function PublicTournamentPage({
     }
   };
 
-  const isAlreadyParticipating = teamList.some(t => t.userId === auth?.currentUser?.uid);
+  const isAlreadyParticipating = teamList.some(t => 
+    t.userId === auth?.currentUser?.uid || t.roster?.some((r: any) => r.userId === auth?.currentUser?.uid)
+  );
   const isFull = teamList.length >= parseInt(tournament?.maxTeams || "16");
 
   const getStatusColor = (status: string) => {
@@ -331,6 +336,11 @@ export default function PublicTournamentPage({
         return "bg-surface-dim border border-outline text-on-surface";
     }
   };
+
+  const isSelectedTeamOwn = Boolean(selectedTeam && auth?.currentUser && (
+    selectedTeam.userId === auth.currentUser.uid || 
+    selectedTeam.roster?.some((p: any) => p.userId === auth.currentUser.uid)
+  ));
 
   return (
     <AppShell>
@@ -399,8 +409,14 @@ export default function PublicTournamentPage({
           <div className="flex flex-wrap items-center gap-4 mt-4">
             {tournament.entryFee && (
               <div className="bg-surface/80 backdrop-blur-md border border-outline rounded-xl px-5 py-3 flex flex-col">
-                <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-1">Entry Fee</span>
-                <span className="text-xl font-black text-primary">₹{tournament.entryFee}</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-1">
+                  {payForTeamKey ? "Your Share" : "Entry Fee"}
+                </span>
+                <span className="text-xl font-black text-primary">
+                  ₹{payForTeamKey && !isNaN(parseFloat(tournament.entryFee.replace(/[^\d.]/g, "")))
+                      ? (parseFloat(tournament.entryFee.replace(/[^\d.]/g, "")) / 2)
+                      : tournament.entryFee}
+                </span>
               </div>
             )}
             <div className="bg-surface/80 backdrop-blur-md border border-outline rounded-xl px-5 py-3 flex flex-col">
@@ -418,7 +434,7 @@ export default function PublicTournamentPage({
                 {isParticipating ? "Processing..." : (payForTeamKey ? "Pay your share now" : "Participate Now")}
               </button>
             )}
-            {isAlreadyParticipating && (
+            {(isAlreadyParticipating && !payForTeamKey) && (
               <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 px-6 py-4 rounded-xl font-black self-stretch flex items-center">
                 You are participating
               </div>
@@ -572,9 +588,20 @@ export default function PublicTournamentPage({
                         </span>
                         <span className="font-bold text-on-surface text-lg group-hover:text-primary transition-colors">{player.name}</span>
                       </div>
-                      <span className="text-xs font-black uppercase tracking-widest px-3 py-1 bg-surface rounded-full border border-outline-variant text-on-surface-variant">
-                        {player.role}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {isSelectedTeamOwn && tournament?.entryFee && (
+                          <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                            (selectedTeam as any).paymentStatus === "partial" && (selectedTeam as any).pendingPaymentFrom === player.userId 
+                              ? "bg-rose-500/10 text-rose-500 border border-rose-500/30" 
+                              : "bg-emerald-500/10 text-emerald-500 border border-emerald-500/30"
+                          }`}>
+                            {(selectedTeam as any).paymentStatus === "partial" && (selectedTeam as any).pendingPaymentFrom === player.userId ? "Unpaid" : "Paid"}
+                          </span>
+                        )}
+                        <span className="text-xs font-black uppercase tracking-widest px-3 py-1 bg-surface rounded-full border border-outline-variant text-on-surface-variant">
+                          {player.role}
+                        </span>
+                      </div>
                     </li>
                   ))}
                 </ul>

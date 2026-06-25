@@ -93,7 +93,7 @@ export default function HomePage() {
         let participating = false;
         if (t.teams) {
           for (const [teamId, teamData] of Object.entries(t.teams as Record<string,any>)) {
-            if (teamData.userId === user.uid || teamId === user.uid || (teamData.roster && teamData.roster.some((r:any) => r.id === user.uid))) {
+            if (teamData.userId === user.uid || teamId === user.uid || (teamData.roster && teamData.roster.some((r:any) => r.userId === user.uid || r.id === user.uid))) {
               if (teamData.name) myTeamNames.add(teamData.name);
               participating = true;
             }

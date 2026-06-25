@@ -339,7 +339,7 @@ export default function PublicTournamentPage({
 
   const isSelectedTeamOwn = Boolean(selectedTeam && auth?.currentUser && (
     selectedTeam.userId === auth.currentUser.uid || 
-    selectedTeam.roster?.some((p: any) => p.userId === auth.currentUser.uid)
+    selectedTeam.roster?.some((p: any) => p.userId === auth?.currentUser?.uid)
   ));
 
   return (

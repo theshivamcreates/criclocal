@@ -280,7 +280,7 @@ export default function HomePage() {
                 Welcome back, {userData?.name?.split(' ')[0] || "Athlete"}
               </h1>
               <p className="text-on-surface-variant font-bold uppercase tracking-widest text-sm">
-                Dashboard <span className="mx-2 text-outline">///</span> {primarySport} {userData?.primaryRole}
+                Dashboard <span className="mx-2 text-outline">{ "///" }</span> {primarySport} {userData?.primaryRole}
               </p>
             </div>
 

@@ -151,7 +151,7 @@ export function PlayerProfileModal({
                 <div className="mb-8">
                   <h4 className="text-sm font-bold text-on-surface-variant mb-2 uppercase tracking-wider">Bio</h4>
                   <p className="text-base text-on-surface leading-relaxed italic border-l-[3px] border-primary/30 pl-4 py-1 bg-surface-dim/50 rounded-r-lg">
-                    "{player.bio}"
+                    &quot;{player.bio}&quot;
                   </p>
                 </div>
               )}

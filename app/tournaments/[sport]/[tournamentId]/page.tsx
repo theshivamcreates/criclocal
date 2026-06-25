@@ -123,7 +123,9 @@ export default function PublicTournamentPage({
       }))
     : [];
 
-  const userPendingPaymentTeamId = teamList.find(t => (t as any).pendingPaymentFrom === auth?.currentUser?.uid)?.id;
+  const userPendingPaymentTeamId = auth?.currentUser?.uid
+    ? teamList.find(t => (t as any).pendingPaymentFrom === auth.currentUser.uid)?.id
+    : undefined;
   const payForTeamKey = urlPayForTeamKey || userPendingPaymentTeamId;
 
   const isSingles = tournament?.sport === "pickleball" && tournament?.settings?.format === "Singles";

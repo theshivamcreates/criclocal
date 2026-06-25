@@ -250,7 +250,7 @@ export default function TeamsPage() {
                 Manage your Pickleball doubles team and discover competitors.
               </p>
             </div>
-            {!myTeam && !isCreating && (
+            {!myTeam && !isCreating && user && (
               <button 
                 onClick={() => setIsCreating(true)}
                 className="bg-primary text-on-primary px-8 py-4 rounded-xl font-black uppercase tracking-widest hover:bg-primary-container transition-colors flex items-center justify-center gap-2"

@@ -13,6 +13,18 @@ export async function createTeam(teamData: Omit<Team, "id" | "createdAt">): Prom
   return teamRef.id;
 }
 
+export async function deleteTeam(teamId: string) {
+  if (!firestore) throw new Error("Firestore not initialized");
+  await deleteDoc(doc(firestore, `teams/${teamId}`));
+  
+  // Clean up all pending team requests for this team
+  const reqQ = query(collection(firestore, "teamRequests"), where("teamId", "==", teamId));
+  const snap = await getDocs(reqQ);
+  
+  const deletePromises = snap.docs.map(d => deleteDoc(d.ref));
+  await Promise.all(deletePromises);
+}
+
 export async function getTeamsBySport(sport: string): Promise<Team[]> {
   if (!firestore) return [];
   const q = query(collection(firestore, "teams"), where("sport", "==", sport));
@@ -32,6 +44,19 @@ export async function getUserTeam(userId: string, sport: string): Promise<Team |
     const docSnap = snap.docs[0];
     return { id: docSnap.id, ...docSnap.data() } as Team;
   }
+  
+  // Fallback for coaches who are not in the players array
+  const qCoach = query(
+    collection(firestore, "teams"), 
+    where("sport", "==", sport),
+    where("coachId", "==", userId)
+  );
+  const snapCoach = await getDocs(qCoach);
+  if (!snapCoach.empty) {
+    const docSnap = snapCoach.docs[0];
+    return { id: docSnap.id, ...docSnap.data() } as Team;
+  }
+  
   return null;
 }
 

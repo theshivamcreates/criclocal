@@ -40,6 +40,7 @@ interface TournamentData {
     format?: string;
     maxSets?: number;
     pointsToWin?: number;
+    maxPlayersPerTeam?: number | string;
   };
   teams?: Record<string, Team>;
 }
@@ -59,6 +60,11 @@ export default function PublicTournamentPage({
   const [isParticipating, setIsParticipating] = useState(false);
   const searchParams = useSearchParams();
   const urlPayForTeamKey = searchParams.get("payForTeam");
+
+  const [showFootballRosterSelection, setShowFootballRosterSelection] = useState(false);
+  const [footballTeamData, setFootballTeamData] = useState<any>(null);
+  const [selectedFootballPlayers, setSelectedFootballPlayers] = useState<string[]>([]);
+
 
   useEffect(() => {
     // Determine the Firebase DB path based on the sport parameter
@@ -124,7 +130,12 @@ export default function PublicTournamentPage({
     : [];
 
   const userPendingPaymentTeamId = auth?.currentUser?.uid
-    ? teamList.find(t => (t as any).pendingPaymentFrom === auth?.currentUser?.uid)?.id
+    ? teamList.find(t => {
+        if (sport === "football") {
+          return (t as any).pendingPaymentsFrom?.includes(auth?.currentUser?.uid);
+        }
+        return (t as any).pendingPaymentFrom === auth?.currentUser?.uid;
+      })?.id
     : undefined;
   const payForTeamKey = urlPayForTeamKey || userPendingPaymentTeamId;
 
@@ -153,12 +164,35 @@ export default function PublicTournamentPage({
           await sendNotification({
             userId: teamData.userId,
             title: "Registration Confirmed",
-            message: `${userData.name} completed the payment. Your team is fully registered for ${tournament?.name}!`,
+            message: `${userData.name} completed their payment for ${tournament?.name}!`,
             type: "general"
           });
         }
         
-        alert("Registration confirmed! Your team is now enrolled.");
+        if (sport === "football") {
+          const currentPending = teamData?.pendingPaymentsFrom || [];
+          const newPending = currentPending.filter((id: string) => id !== auth!.currentUser!.uid);
+          
+          if (newPending.length === 0) {
+            await update(dbRef(db, teamPath), {
+              paymentStatus: "confirmed",
+              pendingPaymentsFrom: null
+            });
+            alert("Your payment is complete. The team is now fully registered!");
+          } else {
+            await update(dbRef(db, teamPath), {
+              pendingPaymentsFrom: newPending
+            });
+            alert("Your payment is complete! Waiting for other teammates.");
+          }
+        } else {
+          // Pickleball / default logic
+          await update(dbRef(db, teamPath), {
+            paymentStatus: "confirmed",
+            pendingPaymentFrom: null
+          });
+          alert("Registration confirmed! Your team is now enrolled.");
+        }
       } else {
         const newTeamRef = push(dbRef(db, `${dbPath}/teams`));
         
@@ -168,7 +202,45 @@ export default function PublicTournamentPage({
           userId: auth!.currentUser!.uid,
         };
         
-        if (!isSingles && pickleballTeam && pickleballTeam.playerDetails) {
+        if (sport === "football" && footballTeamData) {
+          newTeam.name = footballTeamData.name;
+          newTeam.logo = footballTeamData.logoURL || null;
+          
+          newTeam.roster = footballTeamData.playerDetails
+            .filter((p: any) => selectedFootballPlayers.includes(p.id))
+            .map((p: any) => ({
+               name: p.name,
+               userId: p.id,
+               role: p.id === footballTeamData.ownerId ? "Captain" : "Player"
+            }));
+            
+          const pendingIds = selectedFootballPlayers.filter(id => id !== auth!.currentUser!.uid);
+          
+          if (pendingIds.length > 0) {
+            newTeam.paymentStatus = "partial";
+            newTeam.pendingPaymentsFrom = pendingIds;
+            newTeam.totalFeeSplits = selectedFootballPlayers.length;
+          } else {
+            newTeam.paymentStatus = "confirmed";
+          }
+          
+          await set(newTeamRef, newTeam);
+          
+          if (pendingIds.length > 0) {
+            for (const tId of pendingIds) {
+              await sendNotification({
+                userId: tId,
+                title: "Tournament Payment Required",
+                message: `${userData.name} registered ${footballTeamData.name} for ${tournament?.name}. Please pay your share to confirm!`,
+                type: "payment_required",
+                actionUrl: `/tournaments/${sport}/${tournamentId}?payForTeam=${newTeamRef.key}`
+              });
+            }
+            alert("Your share is paid! Notifications sent to teammates to complete the registration.");
+          } else {
+            alert("Successfully registered for the tournament!");
+          }
+        } else if (!isSingles && pickleballTeam && pickleballTeam.playerDetails) {
           newTeam.roster = pickleballTeam.playerDetails.map((p: any) => ({
             name: p.name,
             userId: p.id,
@@ -226,6 +298,30 @@ export default function PublicTournamentPage({
       
       const userData = userDoc.data();
       let pickleballTeam = null;
+
+      // Football Team Check
+      if (sport === "football" && !payForTeamKey) {
+        const team = await getUserTeam(auth.currentUser.uid, "Football");
+        if (!team) {
+          alert("You must create or join a Football club first.");
+          setIsParticipating(false);
+          return;
+        }
+        
+        // Fetch player details
+        const playerDetails = [];
+        for (const pId of team.players) {
+          const pDoc = await getDoc(doc(firestore, `users/${pId}`));
+          if (pDoc.exists()) {
+            playerDetails.push({ id: pDoc.id, ...pDoc.data() });
+          }
+        }
+        setFootballTeamData({ ...team, playerDetails });
+        setSelectedFootballPlayers(team.coachId === auth.currentUser.uid ? [] : [auth.currentUser.uid]);
+        setShowFootballRosterSelection(true);
+        setIsParticipating(false);
+        return;
+      }
 
       // Pickleball Doubles Team Check
       if (!isSingles && !payForTeamKey && sport === "pickleball") {
@@ -316,6 +412,83 @@ export default function PublicTournamentPage({
     } catch (err) {
       console.error("Error participating:", err);
       alert("An error occurred while preparing the checkout.");
+      setIsParticipating(false);
+    }
+  };
+
+  const getRequiredTeamSize = () => {
+    if (tournament?.settings?.maxPlayersPerTeam) return Number(tournament.settings.maxPlayersPerTeam);
+    if (tournament?.settings?.format) {
+      const match = tournament.settings.format.match(/(\d+)v\d+/i);
+      if (match) return parseInt(match[1]);
+    }
+    return 11;
+  };
+
+  const proceedWithFootballPayment = async () => {
+    const requiredSize = getRequiredTeamSize();
+    if (selectedFootballPlayers.length !== requiredSize) {
+      alert(`You must select exactly ${requiredSize} players for this tournament format.`);
+      return;
+    }
+    setShowFootballRosterSelection(false);
+    setIsParticipating(true);
+    try {
+      const userDoc = await getDoc(doc(firestore, `users/${auth!.currentUser!.uid}`));
+      const userData = userDoc.data();
+      
+      let numericFee = 0;
+      if (tournament?.entryFee) {
+        const parsed = parseFloat(tournament.entryFee.replace(/[^\d.]/g, ""));
+        if (!isNaN(parsed)) {
+          numericFee = parsed;
+        }
+      }
+      
+      const isCoach = footballTeamData?.coachId === auth!.currentUser!.uid;
+
+      if (numericFee > 0 && selectedFootballPlayers.length > 0) {
+        numericFee = numericFee / selectedFootballPlayers.length;
+      }
+      
+      if (numericFee > 0 && !isCoach) {
+        const amountInPaisa = Math.round(numericFee * 100);
+        const res = await fetch("/api/razorpay/order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: amountInPaisa })
+        });
+        
+        if (!res.ok) throw new Error("Failed to create Razorpay order");
+        const data = await res.json();
+        const options = {
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+          amount: data.order.amount,
+          currency: data.order.currency,
+          name: "Kixxi",
+          description: `Entry fee for ${tournament?.name}`,
+          order_id: data.order.id,
+          handler: async function (response: any) {
+            await finalizeParticipation(userData, null);
+          },
+          prefill: {
+            name: userData?.name,
+            email: auth!.currentUser!.email || "",
+          },
+          theme: { color: "#ed1c24" },
+        };
+        const rzp = new (window as any).Razorpay(options);
+        rzp.on('payment.failed', function (response: any) {
+           alert("Payment Failed: " + response.error.description);
+           setIsParticipating(false);
+        });
+        rzp.open();
+      } else {
+        await finalizeParticipation(userData, null);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error processing payment.");
       setIsParticipating(false);
     }
   };
@@ -416,7 +589,7 @@ export default function PublicTournamentPage({
                 </span>
                 <span className="text-xl font-black text-primary">
                   ₹{payForTeamKey && !isNaN(parseFloat(tournament.entryFee.replace(/[^\d.]/g, "")))
-                      ? (parseFloat(tournament.entryFee.replace(/[^\d.]/g, "")) / 2)
+                      ? (parseFloat(tournament.entryFee.replace(/[^\d.]/g, "")) / ((tournament?.teams?.[payForTeamKey] as any)?.totalFeeSplits || 2))
                       : tournament.entryFee}
                 </span>
               </div>
@@ -523,6 +696,81 @@ export default function PublicTournamentPage({
           userId={selectedUserId}
           onClose={() => setSelectedUserId(null)}
         />
+      )}
+
+      {/* Football Player Selection Modal */}
+      {showFootballRosterSelection && footballTeamData && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-surface border border-outline rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-outline flex items-center justify-between">
+               <div>
+                  <h2 className="text-2xl font-black uppercase tracking-tighter text-on-surface">Select Roster</h2>
+                  <p className="text-xs font-bold text-on-surface-variant mt-1">Select exactly {getRequiredTeamSize()} players for {tournament?.settings?.format || "this match"}.</p>
+               </div>
+               <button onClick={() => setShowFootballRosterSelection(false)} className="text-on-surface-variant hover:text-primary">
+                 <X size={24} />
+               </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="space-y-3">
+                 {footballTeamData.playerDetails.map((player: any) => {
+                    const isSelected = selectedFootballPlayers.includes(player.id);
+                    const isSelf = player.id === auth?.currentUser?.uid;
+                    
+                    return (
+                      <div 
+                        key={player.id} 
+                        onClick={() => {
+                          if (isSelf) return; // cannot deselect self
+                          setSelectedFootballPlayers(prev => 
+                            prev.includes(player.id)
+                              ? prev.filter(id => id !== player.id)
+                              : [...prev, player.id]
+                          );
+                        }}
+                        className={`flex items-center gap-4 p-4 rounded-xl border transition-colors cursor-pointer ${
+                          isSelected 
+                            ? "bg-primary/5 border-primary/30" 
+                            : "bg-surface-dim border-outline hover:border-primary/50"
+                        } ${isSelf ? "opacity-75 cursor-not-allowed" : ""}`}
+                      >
+                        <div className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors ${
+                          isSelected ? "bg-primary border-primary" : "border-outline bg-surface"
+                        }`}>
+                          {isSelected && <div className="w-2.5 h-2.5 bg-white rounded-sm" />}
+                        </div>
+                        {player.photoURL ? (
+                           <img src={player.photoURL} alt={player.name} className="w-10 h-10 rounded-full object-cover" />
+                        ) : (
+                           <div className="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center font-bold text-primary text-sm">
+                             {player.name?.[0]?.toUpperCase() || "?"}
+                           </div>
+                        )}
+                        <div className="flex-1">
+                          <p className="font-bold text-sm text-on-surface">{player.name}</p>
+                          <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">{isSelf ? "Captain (Required)" : "Player"}</p>
+                        </div>
+                      </div>
+                    );
+                 })}
+              </div>
+            </div>
+            <div className="p-6 border-t border-outline bg-surface-dim flex items-center justify-between">
+              <span className="text-sm font-black uppercase tracking-widest text-on-surface-variant">
+                <span className={selectedFootballPlayers.length === getRequiredTeamSize() ? "text-primary" : ""}>
+                  {selectedFootballPlayers.length}
+                </span> / {getRequiredTeamSize()} Selected
+              </span>
+              <button 
+                onClick={proceedWithFootballPayment}
+                disabled={selectedFootballPlayers.length !== getRequiredTeamSize() || isParticipating}
+                className="bg-primary hover:bg-primary-container text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest transition-colors disabled:opacity-50"
+              >
+                {isParticipating ? "Processing..." : "Proceed"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Roster Popup Modal (For non-singles without userId profile) */}

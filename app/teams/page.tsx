@@ -6,7 +6,7 @@ import { Users, Shield, Plus, Upload, X, Edit2, Trash2, Info } from "lucide-reac
 import { PlayerProfileModal } from "@/components/PlayerProfileModal";
 import { auth, firestore } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { createTeam, getUserTeam, getTeamsBySport, updateTeam } from "@/lib/teamUtils";
+import { createTeam, getUserTeam, getTeamsBySport, updateTeam, deleteTeam } from "@/lib/teamUtils";
 import { ProfilePhotoCropper } from "@/components/ProfilePhotoCropper";
 import { uploadToImageKit } from "@/lib/imagekitUpload";
 import imageCompression from "browser-image-compression";
@@ -140,6 +140,23 @@ export default function TeamsPage() {
       await fetchTeams(user.uid);
     } catch(err: any) {
       alert("Failed to remove player.");
+    }
+  };
+
+  const handleDeleteTeam = async () => {
+    if (!myTeam || !user) return;
+    if (!confirm("Are you sure you want to completely delete this team? This action cannot be undone.")) return;
+    setIsSubmitting(true);
+    try {
+      await deleteTeam(myTeam.id);
+      setMyTeam(null);
+      setIsEditing(false);
+      await fetchTeams(user.uid);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (err: any) {
+      alert("Failed to delete team: " + err.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -360,6 +377,16 @@ export default function TeamsPage() {
               >
                 {isSubmitting ? "Processing..." : isEditing ? "Update Team" : "Create Team"}
               </button>
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={handleDeleteTeam}
+                  disabled={isSubmitting}
+                  className="w-full bg-red-500/10 text-red-500 border border-red-500/30 py-4 rounded-xl font-black uppercase tracking-widest hover:bg-red-500/20 transition-colors disabled:opacity-50 mt-4"
+                >
+                  Delete Team
+                </button>
+              )}
             </form>
           </div>
         )}

@@ -5,7 +5,10 @@ export interface Team {
   bio?: string;
   logoURL?: string;
   ownerId: string;
+  coachId?: string | null;
+  captainId?: string | null;
   players: string[];
+  playerRoles?: Record<string, { position: string; isPlaying11: boolean }>;
   createdAt: number;
 }
 

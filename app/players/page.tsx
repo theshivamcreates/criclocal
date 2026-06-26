@@ -44,6 +44,7 @@ export default function PlayersPage() {
   const [showAllSports, setShowAllSports] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [myPickleballTeam, setMyPickleballTeam] = useState<any>(null);
+  const [myFootballClub, setMyFootballClub] = useState<any>(null);
   const [sentTeamRequests, setSentTeamRequests] = useState<string[]>([]);
 
   const router = useRouter();
@@ -115,11 +116,16 @@ export default function PlayersPage() {
           const { getUserTeam } = await import("@/lib/teamUtils");
           const team = await getUserTeam(user.uid, "Pickleball");
           setMyPickleballTeam(team);
+          
+          const footballTeam = await getUserTeam(user.uid, "Football");
+          setMyFootballClub(footballTeam);
 
           // Listen to sent team requests
           const tReqQ = query(collection(firestore, "teamRequests"), where("from", "==", user.uid));
           unsubTeamRequests = onSnapshot(tReqQ, snap => {
-            setSentTeamRequests(snap.docs.map(d => d.data().to as string));
+            const activeTeamIds = [team?.id, footballTeam?.id].filter(Boolean);
+            const validReqs = snap.docs.filter(d => activeTeamIds.includes(d.data().teamId));
+            setSentTeamRequests(validReqs.map(d => d.data().to as string));
           });
 
         } catch (err) {
@@ -398,6 +404,27 @@ export default function PlayersPage() {
                           className="flex items-center gap-2 bg-primary/20 text-primary px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-widest hover:bg-primary/30 transition-colors border border-primary/30"
                         >
                           <Shield size={16} /> Invite to Team
+                        </button>
+                      )
+                    )}
+
+                    {myFootballClub && 
+                     myFootballClub.ownerId === currentUserId && 
+                     selectedPlayer.gamePlayed?.includes("Football") && 
+                     !myFootballClub.players.includes(selectedPlayer.id) && (
+                      sentTeamRequests.includes(selectedPlayer.id) ? (
+                        <div className="flex items-center gap-2 bg-surface-dim border border-outline text-on-surface-variant px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-widest">
+                          <Check size={16} /> Club Invite Sent
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={async () => {
+                            const { sendTeamInvite } = await import("@/lib/teamUtils");
+                            await sendTeamInvite(myFootballClub.id, myFootballClub.name, "Football", currentUserId, selectedPlayer.id);
+                          }}
+                          className="flex items-center gap-2 bg-primary/20 text-primary px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-widest hover:bg-primary/30 transition-colors border border-primary/30"
+                        >
+                          <Shield size={16} /> Invite to Club
                         </button>
                       )
                     )}
